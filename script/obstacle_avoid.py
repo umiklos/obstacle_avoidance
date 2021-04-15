@@ -91,9 +91,9 @@ def callback_detectedobjects(data):
 
     polygons=np.array(polygons)
     closest_waypoint = closest_point(waypoint_list,current_pose.pose.position.x,current_pose.pose.position.y) 
-    #id=collision_examination(waypoint_list,waypoints_size,closest_waypoint)
+    id=collision_examination(waypoint_list,waypoints_size,closest_waypoint)
 
-    
+    #print(len(collect_intersect_id))
 
     #print(elkerules)
     #elkerules.append([waypoint_list])
@@ -103,10 +103,10 @@ def callback_detectedobjects(data):
     #     elkerules[i,2]= waypoint_list[i][3]
     #     elkerules[i,3]= waypoint_list[i][4] 
 
-    """
-    elif len(collect_intersect_id) > 0 :
     
-        print('ci nem 0')      
+    if len(collect_intersect_id) > 0 :
+    
+             
         szakasz_yaw = np.arctan2((waypoint_list[collect_intersect_id[-1]][1] - waypoint_list[collect_intersect_id[0]][1]), (waypoint_list[collect_intersect_id[-1]][0]- waypoint_list[collect_intersect_id[0]][0]))
         #print(szakasz_yaw)
         start_index = closest_point(waypoint_list,waypoint_list[midle_index_list[0]][0] + ((kiteres_hossza + visszateres_hossza + elkerules_hossza)/2) * np.cos(szakasz_yaw + np.pi),waypoint_list[midle_index_list[0]][1] + ((elkerules_hossza+visszateres_hossza+kiteres_hossza)/2) * np.sin(szakasz_yaw + np.pi))
@@ -179,17 +179,18 @@ def callback_detectedobjects(data):
         if len(yaw) < len(new_line.coords):
             yaw.append(waypoint_list[end_index][3])
 
-        
         yaw=np.array(yaw)
-
         elkerules_=np.column_stack((elkerules_data,yaw))
-        
-
         elkerules = np.column_stack((elkerules_,new_velocities_data)) 
+
+    else:
+        pass
+
+    
 
     
     #print(len(elkerules),len(waypoint_list),len(collect_intersect_id))
-    """
+    
 
                 
 
@@ -246,20 +247,6 @@ def line_length(x1, x2, y1, y2):
     return ((x1-x2)**2 + (y1-y2)**2)**0.5
 
 
-# def load_csv(path):
-#     waypoint_list = []
-#     with open(path) as f:
-#         header = f.readline()
-#         for i,line in enumerate(f):
-#             values = line.strip().split(',')
-#             x = float(values[0])
-#             y = float(values[1])
-#             z = float(values[2])
-#             yaw = float(values[3])
-#             lin_vel = float(values[4])
-#             waypoint_list.append([x,y,z,yaw,lin_vel])
-#     return waypoint_list
-
 
 def closest_point(data,x,y):
     min_distance, min_index = 10000000, 0
@@ -289,13 +276,28 @@ def publish_marker(pub_new_data_, pub_based_waypoint_list_):
     w0.twist = TwistStamped()
     rate=rospy.Rate(10)
     ma = vismsg.MarkerArray()
+    
+   
+   
+    
+
+
     while not rospy.is_shutdown():
         rate.sleep()
+        ma.markers = []
+        msg_pub_lane.waypoints = []
+
+       
+        
+
+        
         if elkerules is not None or elkerules is not []:
             i = 0
             for e in elkerules:
                 i += 1
                 ori_arrow = vismsg.Marker()
+                ori_arrow.ns = "orientation"
+                ori_arrow.header.frame_id = "map"
                 ori_arrow.type = ori_arrow.ARROW
                 ori_arrow.pose.position.x = e[0]
                 ori_arrow.pose.position.y = e[1]
@@ -309,11 +311,10 @@ def publish_marker(pub_new_data_, pub_based_waypoint_list_):
                 ori_arrow.color.a = 1.0
                 ori_arrow.scale.x = 1.0
                 ori_arrow.scale.y = 0.1
-                ori_arrow.id = i
-                ori_arrow.ns = "orientation"
-                ori_arrow.header.frame_id = "map"
+                ori_arrow.id = i                
                 ma.markers.append(ori_arrow)
                 #Velocity
+                
                 marker_lin_vel = vismsg.Marker()
                 marker_lin_vel.type = marker_lin_vel.TEXT_VIEW_FACING
                 marker_lin_vel.pose.position.x = e[0]
@@ -356,6 +357,7 @@ def publish_marker(pub_new_data_, pub_based_waypoint_list_):
                 w0.pose = pose
                 w0.twist.twist.linear.x = e[3]
                 msg_pub_lane.waypoints.append(w0)
+            
             pub_based_waypoint_list_.publish(msg_pub_lane)
             pub_new_data_.publish(ma)
 
@@ -376,13 +378,13 @@ def pub():
     # time.sleep(1)
     # rospy.loginfo("Obstacle avoid py started")
 
-    t = Thread(target=publish_marker, args=(pub_new_data,pub_based_waypoint_list,))
+    t = Thread(target=publish_marker, args=(pub_new_data,pub_based_waypoint_list))
     t.start()
-    cw=Int32()
+    
     while not rospy.is_shutdown():
 
-        #cw.data = closest_waypoint
-        #pub_closest_waypoint.publish(closest_waypoint)
+        # cw.data = closest_waypoint
+        # pub_closest_waypoint.publish(closest_waypoint)
         
 
         #if elkerules is not None or elkerules is not []:
