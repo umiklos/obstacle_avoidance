@@ -15,11 +15,14 @@ from shapely.geometry import Polygon, LineString, Point
 from shapely import affinity
 from scipy import interpolate
 
+from dynamic_reconfigure.server import Server
+from obstacle_avoidance.cfg import ParamsConfig
+
 closest_waypoint = None 
 list= None
 current_pose = None
 waypoints_size = None
-#waypoint_list= []
+
 polygons=[]
 elkerules=[]
 centroids=[]
@@ -55,12 +58,8 @@ with open(rospy.get_param("waypoint_file_name")) as f:
         z = float(values[2])
         yaw = float(values[3])
         lin_vel = float(values[4])
-        waypoint_list.append([x,y,z,yaw,lin_vel])
-
-for i in waypoint_list:
-    elkerules.append([i[0],i[1],i[3],i[4]])
-
-
+        waypoint_list.append([x,y,yaw,lin_vel])
+elkerules=np.array(waypoint_list)
 
 
 # def callback_closest_waypoints(data):
@@ -115,7 +114,7 @@ def callback_detectedobjects(data):
 
             actual_len_of_avoid = 0
             distances_between_points=0
-            for k in range(len(waypoint_list)-1):
+            for k in range(closest_waypoint,len(waypoint_list)-1):
                 x1 = waypoint_list[k][0]
                 x2 = waypoint_list[k+1][0]
                 y1 = waypoint_list[k][1]
@@ -126,7 +125,7 @@ def callback_detectedobjects(data):
                 distances_between_points += line_length(x1,x2,y1,y2)
                 original_distances.append(distances_between_points)
 
-                vx.append(waypoint_list[k][4])
+                vx.append(waypoint_list[k][3])
                 
                 if k > start_index:
                     actual_len_of_avoid += line_length(x1, x2, y1, y2)
@@ -176,7 +175,7 @@ def callback_detectedobjects(data):
                 yaw.append(np.arctan2((new_line.coords.xy[1][i]-new_line.coords.xy[1][i-1]),new_line.coords.xy[0][i]-new_line.coords.xy[0][i-1]))
             
             if len(yaw) < len(new_line.coords):
-                yaw.append(waypoint_list[end_index][3])
+                yaw.append(waypoint_list[end_index][2])
 
         
             yaw=np.array(yaw)
@@ -197,10 +196,6 @@ def collision_examination(data,closest_waypoint_,waypoints_size_):
     if closest_waypoint_ is not None:
         for i in range(closest_waypoint_, waypoints_size_ ):                    #### waypoint_size ig megy az iteracio
             
-            # p1=data[i][0] + rear_axle_car_front_distance * np.cos(data[i][3]) + sin(data[i][3] * (car_width/2) ) ,  data[i][1] + (car_width/2) * np.sin(data[i][3]) 
-            # p2=data[i][0] + rear_axle_car_front_distance * np.cos(data[i][3]), data[i][1] - (car_width/2) * np.sin(data[i][3])
-            # p3=data[i][0] - car_length * np.cos(data[i][3]) , data[i][1] - (car_width/2) * np.sin(data[i][3]) 
-            # p4=data[i][0] - car_length * np.cos(data[i][3]) , data[i][1] + (car_width/2) * np.sin(data[i][3])
 
             p1 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] + (car_width/2),-data[i][3])
             p2 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] - (car_width/2),-data[i][3])
@@ -361,10 +356,10 @@ def publish_marker(pub_new_data_, pub_based_waypoint_list_):
 
 def pub():
     global waypoint_list
-    try:
-        waypoint_list=load_csv(rospy.get_param("waypoint_file_name"))
-    except:
-        rospy.loginfo('no waypoint')
+    # try:
+    #     waypoint_list=load_csv(rospy.get_param("waypoint_file_name"))
+    # except:
+    #     rospy.loginfo('no waypoint')
     rospy.init_node('obstacle_avoidane')
     rospy.Subscriber("/converted_euclidean_objects", vismsg.MarkerArray, callback_detectedobjects)
     rospy.Subscriber("/current_pose", PoseStamped,callback_current_pose)
