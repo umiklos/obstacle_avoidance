@@ -12,8 +12,8 @@ from geometry_msgs.msg import PoseStamped,TwistStamped
 from autoware_msgs.msg import Lane, Waypoint
 import math
 from shapely.geometry import Polygon, LineString, Point
-from shapely import affinity
-from scipy import interpolate
+
+
 
 # from dynamic_reconfigure.server import Server
 # from obstacle_avoidance.cfg import ParamsConfig
@@ -33,8 +33,6 @@ path_replanned=False
 
 
 
-
-
 #### params ###
 
 params=rospy.get_param(rospy.get_param("car_name"))
@@ -42,13 +40,13 @@ car_width = params['car_width']
 rear_axle_car_front_distance = params['rear_axle_car_front_distance']
 car_length = params['car_length']
 
-kiteres_iranya = "balra"
-kiteres_hossza = 8.0
-oldaliranyu_eltolas = 3.0
-elkerules_hossza = 2.0
-visszateres_hossza = 6.0
-distance_delta = 1.1
-lookahead = 40
+kiteres_iranya = rospy.get_param('/obstacle_avoidance_params/kiteres_iranya')
+kiteres_hossza = rospy.get_param('/obstacle_avoidance_params/kiteres_hossza')
+oldaliranyu_eltolas = rospy.get_param('/obstacle_avoidance_params/oldaliranyu_eltolas')
+elkerules_hossza = rospy.get_param('/obstacle_avoidance_params/elkerules_hossza')
+visszateres_hossza = rospy.get_param('/obstacle_avoidance_params/visszateres_hossza')
+distance_delta = rospy.get_param('/obstacle_avoidance_params/distance_delta')
+lookahead = rospy.get_param('/obstacle_avoidance_params/lookahead')
 
 waypoint_list = []
 with open(rospy.get_param("waypoint_file_name")) as f:
@@ -118,10 +116,8 @@ def callback_detectedobjects(data):
                 
                 start_point = waypoint_list[start_index][0:2]
                 end_point = waypoint_list[end_index][0:2]
-                
+    
                 elkerules_points=[]
-                
-            
                 original_distances=[]
                 distances_between_points=0
                 for i in range(closest_waypoint,len(waypoint_list)-1):
@@ -148,9 +144,7 @@ def callback_detectedobjects(data):
                 elkerules_ls = LineString(elkerules_points) 
                 n=round(elkerules_ls.length/distance_delta)
                 distances = np.linspace(0,elkerules_ls.length,n)
-                distances_for_velocity = np.linspace(0,velocity_ls.length,n)
-            
-                
+                distances_for_velocity = np.linspace(0,velocity_ls.length,n)                
                 new_velocities = [velocity_ls.interpolate(distance_v) for distance_v in distances_for_velocity]
                 points = [elkerules_ls.interpolate(distance_ls) for distance_ls in distances]
                 new_line = LineString(points)
@@ -183,14 +177,7 @@ def callback_detectedobjects(data):
             else:
                 rospy.logwarn("parameters needs refactoring")
                 print(collect_intersect_id)
-            
-            #print(replanned_path_start,replanned_path_ends)
-        
-        
-        
-
-                
-
+                          
 
 
 def collision_examination(data,closest_waypoint_,waypoints_size_):
@@ -199,7 +186,6 @@ def collision_examination(data,closest_waypoint_,waypoints_size_):
     if closest_waypoint_ is not None:
        
         for i in range(closest_waypoint_, waypoints_size_ ):                    #### waypoint_size ig megy az iteracio
-            
 
             p1 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] + (car_width/2),-data[i][2])
             p2 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] - (car_width/2),-data[i][2])
@@ -236,8 +222,6 @@ def line_orientation(x1, x2, y1, y2):
 def line_length(x1, x2, y1, y2):
     return ((x1-x2)**2 + (y1-y2)**2)**0.5
 
-
-
 def closest_point(data,x,y):
     min_distance, min_index = 10000000, 0
     for i,w in enumerate(data): 
@@ -260,23 +244,12 @@ def rotate( origin,point_x,point_y, radians):
     qy = offset_y + -sin_rad * adjusted_x + cos_rad * adjusted_y
     return qx, qy
 
-
-# def line_proportion(x1, x2, y1, y2, proportion):
-#     if not (0 < proportion < 1):
-#         print("proportion should be between 0 and 1")
-#     m = proportion
-#     n = 1 - proportion
-#     x_p = (float)((n * x1)+(m * x2))/(m + n)
-#     y_p = (float)((n * y1)+(m * y2))/(m + n)
-#     line = np.array([x_p, y_p])
-#     return line
        
 def publish_marker(pub_new_data_, pub_based_waypoint_list_):
     msg_pub_lane = Lane()
     rate=rospy.Rate(10)
     ma = vismsg.MarkerArray()
  
-
 
     while not rospy.is_shutdown():
         rate.sleep()
@@ -371,7 +344,7 @@ def pub():
     rospy.Subscriber("/current_pose", PoseStamped,callback_current_pose)
     pub_new_data = rospy.Publisher("/global_waypoints/visualization",vismsg.MarkerArray, queue_size=1 ) 
     pub_based_waypoint_list = rospy.Publisher("/base_waypoints",Lane,queue_size=1)
-    pub_closest_waypoint = rospy.Publisher("/closest_waypoint", Int32, queue_size=1)
+    
 
     # time.sleep(1)
     # rospy.loginfo("Obstacle avoid py started")
