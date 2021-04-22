@@ -140,7 +140,7 @@ def callback_detectedobjects(data):
                     elif i < start_index or i > end_index :
                         elkerules_points.append((waypoint_list[i][0],waypoint_list[i][1])) 
                                 
-                velocity_ls = LineString(np.column_stack((original_distances,elkerules[closest_waypoint:len(waypoint_list)-1,3])))
+                velocity_ls = LineString(np.column_stack((original_distances,elkerules[closest_waypoint+1:len(waypoint_list),3])))
                 elkerules_ls = LineString(elkerules_points) 
                 n=round(elkerules_ls.length/distance_delta)
                 distances = np.linspace(0,elkerules_ls.length,n)

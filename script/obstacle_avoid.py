@@ -13,7 +13,7 @@ from autoware_msgs.msg import Lane, Waypoint
 import math
 from shapely.geometry import Polygon, LineString, Point
 
-import dynamic_reconfigure.client
+#import dynamic_reconfigure.client
 
 # from dynamic_reconfigure.server import Server
 # from obstacle_avoidance.cfg import ParamsConfig
@@ -140,7 +140,7 @@ def callback_detectedobjects(data):
                     else:
                         elkerules_points.append((x1 + distance * np.cos(angle - np.pi / 2),y1 + distance * np.sin(angle - np.pi / 2)))
                 
-                velocity_ls = LineString(np.column_stack((original_distances,elkerules[closest_waypoint:len(waypoint_list)-1,3]))) 
+                velocity_ls = LineString(np.column_stack((original_distances,elkerules[closest_waypoint+1:len(waypoint_list),3]))) 
                 elkerules_ls = LineString(elkerules_points) 
                 n=round(elkerules_ls.length/distance_delta)
                 distances = np.linspace(0,elkerules_ls.length,n)
