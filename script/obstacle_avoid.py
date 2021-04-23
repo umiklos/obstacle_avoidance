@@ -30,7 +30,7 @@ centroids=[]
 midle_index_list=[]
 collect_intersect_id=[]
 path_replanned=False
-config = None
+
 
 
 #### params ###
@@ -70,12 +70,9 @@ def callback_detectedobjects(data):
     global waypoints_size,car_width,rear_axle_car_front_distance,car_length,closest_waypoint,polygons,collect_intersect_id,elkerules,polygons,centroids,midle_index_list,path_replanned,lookahead, start_index, end_index
     waypoints_size = len(waypoint_list)
     
-    
     polygon_list=[]
     polygons=[]
     centroids = []
-    
-    
 
     for i in range (len(data.markers)):
         polygon_data=[]
@@ -167,7 +164,6 @@ def callback_detectedobjects(data):
                 path_replanned=True
                 collect_intersect_id=[]
         else:
-            
             replanned_path_start = closest_point(elkerules,waypoint_list[start_index][0],waypoint_list[start_index][1])
             replanned_path_ends = closest_point(elkerules,waypoint_list[end_index][0],waypoint_list[end_index][1])
             
@@ -187,15 +183,13 @@ def collision_examination(data,closest_waypoint_,waypoints_size_):
     if closest_waypoint_ is not None:
        
         for i in range(closest_waypoint_, waypoints_size_ ):                    #### waypoint_size ig megy az iteracio
-            
 
             p1 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] + (car_width/2),-data[i][2])
             p2 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] - (car_width/2),-data[i][2])
-            p3 = rotate((data[i][0],data[i][1]),data[i][0] - car_length , data[i][1] - (car_width/2),-data[i][2])
-            p4 = rotate((data[i][0],data[i][1]),data[i][0] - car_length , data[i][1] + (car_width/2),-data[i][2])
+            p3 = rotate((data[i][0],data[i][1]),data[i][0] - (car_length-rear_axle_car_front_distance) , data[i][1] - (car_width/2),-data[i][2])
+            p4 = rotate((data[i][0],data[i][1]),data[i][0] - (car_length-rear_axle_car_front_distance) , data[i][1] + (car_width/2),-data[i][2])
 
             car = Polygon([p1,p2,p3,p4])
-
 
             for k in range(len(centroids)):
                 if car.intersects(centroids[k]) == True:

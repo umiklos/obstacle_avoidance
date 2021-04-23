@@ -189,8 +189,8 @@ def collision_examination(data,closest_waypoint_,waypoints_size_):
 
             p1 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] + (car_width/2),-data[i][2])
             p2 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] - (car_width/2),-data[i][2])
-            p3 = rotate((data[i][0],data[i][1]),data[i][0] - car_length , data[i][1] - (car_width/2),-data[i][2])
-            p4 = rotate((data[i][0],data[i][1]),data[i][0] - car_length , data[i][1] + (car_width/2),-data[i][2])
+            p3 = rotate((data[i][0],data[i][1]),data[i][0] - (car_length-rear_axle_car_front_distance) , data[i][1] - (car_width/2),-data[i][2])
+            p4 = rotate((data[i][0],data[i][1]),data[i][0] - (car_length-rear_axle_car_front_distance) , data[i][1] + (car_width/2),-data[i][2])
 
             car = Polygon([p1,p2,p3,p4])
 
