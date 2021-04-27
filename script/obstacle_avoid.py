@@ -33,6 +33,8 @@ path_replanned=False
 
 
 
+
+
 #### params ###
 
 params=rospy.get_param(rospy.get_param("car_name"))
@@ -47,6 +49,7 @@ elkerules_hossza = rospy.get_param('/obstacle_avoidance_params/elkerules_hossza'
 visszateres_hossza = rospy.get_param('/obstacle_avoidance_params/visszateres_hossza')
 distance_delta = rospy.get_param('/obstacle_avoidance_params/distance_delta')
 lookahead = rospy.get_param('/obstacle_avoidance_params/lookahead')
+polygon_size_threshold = rospy.get_param('/obstacle_avoidance_params/polygon_size_threshold')
 
 waypoint_list = []
 with open(rospy.get_param("waypoint_file_name")) as f:
@@ -67,7 +70,7 @@ def callback_current_pose(pose):
     current_pose = pose
 
 def callback_detectedobjects(data):
-    global waypoints_size,car_width,rear_axle_car_front_distance,car_length,closest_waypoint,polygons,collect_intersect_id,elkerules,polygons,centroids,midle_index_list,path_replanned,lookahead, start_index, end_index
+    global waypoints_size,car_width,rear_axle_car_front_distance,car_length,closest_waypoint,polygons,collect_intersect_id,elkerules,polygons,centroids,midle_index_list,path_replanned,lookahead, start_index, end_index,polygon_size_treshold
     waypoints_size = len(waypoint_list)
     
     polygon_list=[]
@@ -80,9 +83,11 @@ def callback_detectedobjects(data):
         for j in range(len(data.markers[i].points)):
             polygon_data.append([data.markers[i].points[j].x,data.markers[i].points[j].y])    
         polygon_list.append(polygon_data)
-    for k in range(len(polygon_list)):        
-        polygons.append(Polygon(polygon_list[k]))
-    polygons=np.array(polygons)
+    for k in range(len(polygon_list)):
+        p = Polygon(polygon_list[k])
+        if p.area > polygon_size_threshold:        
+            polygons.append(p)
+    #polygons=np.array(polygons)
 
     angles=np.zeros((len(waypoint_list),))
 
@@ -94,12 +99,11 @@ def callback_detectedobjects(data):
     
         angles[ij] = line_orientation(x1, x2, y1, y2) 
     angles[-1]= waypoint_list[-1][2]
-
-    
+      
     
     if current_pose is not None:
         closest_waypoint = closest_point(waypoint_list,current_pose.pose.position.x,current_pose.pose.position.y) 
-        if path_replanned==False:
+        if path_replanned==False: 
             la = lookahead
             
             if waypoints_size - closest_waypoint < la:
@@ -165,11 +169,11 @@ def callback_detectedobjects(data):
                 elkerules_data[:,0]=new_line.coords.xy[0]
                 elkerules_data[:,1]=new_line.coords.xy[1]
 
-                yaw = np.zeros((len(new_line.coords),1))
+                yaw = np.zeros((len(new_line.coords),))
                 for i in range(len(elkerules_data)-1):
-                   yaw[i,0] = np.arctan2((elkerules_data[i+1,1]-elkerules_data[i,1]),(elkerules_data[i+1,0]- elkerules_data[i,0]))
+                   yaw[i] = np.arctan2((elkerules_data[i+1,1]-elkerules_data[i,1]),(elkerules_data[i+1,0]- elkerules_data[i,0]))
 
-                yaw[-1,0]= waypoint_list[-1][2]
+                yaw[-1]= waypoint_list[-1][2]
                 
                 elkerules_=np.column_stack((elkerules_data,yaw))
                 elkerules = np.column_stack((elkerules_,new_velocities_data)) 
@@ -179,27 +183,27 @@ def callback_detectedobjects(data):
             replanned_path_start = closest_point(elkerules,waypoint_list[start_index][0],waypoint_list[start_index][1])
             replanned_path_ends = closest_point(elkerules,waypoint_list[end_index][0],waypoint_list[end_index][1])
             
-            # collision_examination(elkerules,replanned_path_start,replanned_path_ends,yaw[:,0])
+            collision_examination(elkerules,replanned_path_start,replanned_path_ends,elkerules[:,2])
 
-            # if len(collect_intersect_id) == 0:
-            #     rospy.loginfo("parameters seems ok")
-            # else:
-            #     rospy.logwarn("parameters needs refactoring")
-            #     print(collect_intersect_id)            
+            if len(collect_intersect_id) == 0:
+                rospy.loginfo("parameters seems ok")
+            else:
+                rospy.logwarn("parameters needs refactoring")
+                print(collect_intersect_id)            
 
 
 
-def collision_examination(data,closest_waypoint_,waypoints_size_,angle_):
+def collision_examination(data,closest_waypoint_,waypoints_size_,angles_):
     intersect_id=[]
-    #midle_index_list=[]
+    #polygon_id = []
     if closest_waypoint_ is not None:
        
         for i in range(closest_waypoint_, waypoints_size_ ):                    #### waypoint_size ig megy az iteracio
 
-            p1 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] + (car_width/2),-angle_[i])
-            p2 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] - (car_width/2),-angle_[i])
-            p3 = rotate((data[i][0],data[i][1]),data[i][0] - (car_length-rear_axle_car_front_distance) , data[i][1] - (car_width/2),-angle_[i])
-            p4 = rotate((data[i][0],data[i][1]),data[i][0] - (car_length-rear_axle_car_front_distance) , data[i][1] + (car_width/2),-angle_[i])
+            p1 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] + (car_width/2),-angles_[i])
+            p2 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] - (car_width/2),-angles_[i])
+            p3 = rotate((data[i][0],data[i][1]),data[i][0] - (car_length-rear_axle_car_front_distance) , data[i][1] - (car_width/2),-angles_[i])
+            p4 = rotate((data[i][0],data[i][1]),data[i][0] - (car_length-rear_axle_car_front_distance) , data[i][1] + (car_width/2),-angles_[i])
 
             car = Polygon([p1,p2,p3,p4])
 
@@ -214,7 +218,7 @@ def collision_examination(data,closest_waypoint_,waypoints_size_,angle_):
 
             for j in range(len(polygons)):                
                 if car.intersects(polygons[j]) == True:
-                    #intersect_id.append(i)
+                    #intersect_id.append([[i,polygons[j].area]])
                     if len(collect_intersect_id) == 0:
                         collect_intersect_id.append(i)
                     elif len(collect_intersect_id) != 0:
@@ -222,7 +226,7 @@ def collision_examination(data,closest_waypoint_,waypoints_size_,angle_):
                             collect_intersect_id.append(i)
                             collect_intersect_id.sort
                 #print(intersect_id)
-                    
+    
                     
 
 
