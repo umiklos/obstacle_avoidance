@@ -79,7 +79,7 @@ def callback_detectedobjects(data):
     polygon_list=[]
     polygons=[]
     centroids = []
-    valid_points=[]
+    valid_points=np.empty(0,)
 
     for i in range (len(data.markers)):
         polygon_data=[]
@@ -119,14 +119,15 @@ def callback_detectedobjects(data):
                 counter = np.bincount(np.array(all_intersection)) 
                 valid_points = np.asarray(np.where(counter > presence_threshold))
             
-            # print(valid_points,collect_intersect_id)         
-
-
-            if len(collect_intersect_id) > 0 and len(midle_index_list) > 0 :
-                               
-                szakasz_yaw = np.arctan2((waypoint_list[collect_intersect_id[-1]][1] - waypoint_list[collect_intersect_id[0]][1]), (waypoint_list[collect_intersect_id[-1]][0]- waypoint_list[collect_intersect_id[0]][0]))
-                start_index = closest_point(waypoint_list,waypoint_list[midle_index_list[0]][0] + (kiteres_hossza  + (elkerules_hossza/2)) * np.cos(szakasz_yaw + np.pi),waypoint_list[midle_index_list[0]][1] + ((elkerules_hossza/2) +kiteres_hossza) * np.sin(szakasz_yaw + np.pi))
-                end_index = closest_point(waypoint_list,waypoint_list[midle_index_list[0]][0] + (visszateres_hossza + (elkerules_hossza/2)) * np.cos(szakasz_yaw),waypoint_list[midle_index_list[0]][1] + (visszateres_hossza + (elkerules_hossza/2)) * np.sin(szakasz_yaw))
+            if valid_points.size > 0:
+                mask = np.isin(midle_index_list,valid_points)
+                center= np.array(midle_index_list)
+                center=center[mask]
+                print(waypoint_list[valid_points[:,-1]][1])      
+                                       
+                szakasz_yaw = np.arctan2((waypoint_list[valid_points[:,-1]][1] - waypoint_list[valid_points[:,0]][1]), (waypoint_list[valid_points[:,-1]][0]- waypoint_list[valid_points[:,0]][0]))
+                start_index = closest_point(waypoint_list,waypoint_list[center[0]][0] + (kiteres_hossza  + (elkerules_hossza/2)) * np.cos(szakasz_yaw + np.pi),waypoint_list[center[0]][1] + ((elkerules_hossza/2) +kiteres_hossza) * np.sin(szakasz_yaw + np.pi))
+                end_index = closest_point(waypoint_list,waypoint_list[center[0]][0] + (visszateres_hossza + (elkerules_hossza/2)) * np.cos(szakasz_yaw),waypoint_list[center[0]][1] + (visszateres_hossza + (elkerules_hossza/2)) * np.sin(szakasz_yaw))
                 start_point = waypoint_list[start_index][0:2]
                 end_point = waypoint_list[end_index][0:2]
 
@@ -233,7 +234,7 @@ def collision_examination(data,closest_waypoint_,waypoints_size_,angles_):
                         midle_index_list.append(midle_index)
                     elif len(midle_index_list) != 0:
                         if midle_index not in midle_index_list:
-                            midle_index_list.append(midle_index) 
+                            midle_index_list.append(midle_index)      
                 inter_id= np.unique(intersect_id)
                 #print(inter_id)
                 
