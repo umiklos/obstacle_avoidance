@@ -31,6 +31,7 @@ collect_intersect_id=[]
 path_replanned=False
 
 all_intersection=[]
+la= None
 
 
 #### params ###
@@ -69,7 +70,7 @@ def callback_current_pose(pose):
     current_pose = pose
 
 def callback_detectedobjects(data):
-    global waypoints_size,car_width,rear_axle_car_front_distance,car_length,closest_waypoint,polygons,collect_intersect_id,elkerules,polygons,centroids,midle_index_list,path_replanned,lookahead, start_index, end_index,polygon_size_threshold,presence_threshold
+    global waypoints_size,car_width,rear_axle_car_front_distance,car_length,closest_waypoint,polygons,collect_intersect_id,elkerules,polygons,centroids,midle_index_list,path_replanned,lookahead, start_index, end_index,polygon_size_threshold,presence_threshold,la
     waypoints_size = len(waypoint_list)
     
     polygon_list=[]
@@ -84,7 +85,7 @@ def callback_detectedobjects(data):
         polygon_list.append(polygon_data)
     for k in range(len(polygon_list)):
         p = Polygon(polygon_list[k])
-        if p.area > polygon_size_threshold:        
+        if p.length > polygon_size_threshold:        
             polygons.append(p)
             centroids.append([p.centroid.x,p.centroid.y])
 
@@ -110,15 +111,16 @@ def callback_detectedobjects(data):
             
             collision_examination(waypoint_list,closest_waypoint,closest_waypoint + la,angles)  
 
+
             if len(all_intersection) > 0 :
                 counter = np.bincount(np.array(all_intersection)) 
                 valid_points = np.asarray(np.where(counter > presence_threshold))
+            print(counter)
             
             if valid_points.size > 0:
                 mask = np.isin(midle_index_list,valid_points)
                 center= np.array(midle_index_list)
                 center=center[mask]     
-
                                 
                 if center.size > 0:                    
                     szakasz_yaw = np.arctan2((waypoint_list[valid_points[0][-1]][1] - waypoint_list[valid_points[0][0]][1]), (waypoint_list[valid_points[0][-1]][0]- waypoint_list[valid_points[0][0]][0]))
@@ -234,7 +236,7 @@ def collision_examination(data,closest_waypoint_,waypoints_size_,angles_):
                         if midle_index not in midle_index_list:
                             midle_index_list.append(midle_index)      
                 inter_id= np.unique(intersect_id)
-                #print(inter_id)
+                #print(intersect_id)
                 
         all_intersection.extend(inter_id)
                     
@@ -338,6 +340,10 @@ def publish_marker(pub_new_data_, pub_based_waypoint_list_):
                     marker_lane_points.color.g=1.0
                     marker_lane_points.color.b=0.0
 
+                elif i == closest_waypoint+la: 
+                    marker_lane_points.color.r=0.0
+                    marker_lane_points.color.g=0.0
+                    marker_lane_points.color.b=1.0
                 marker_lane_points.color.a = 1.0
                 marker_lane_points.scale.x = 0.4
                 marker_lane_points.scale.y = 0.4
