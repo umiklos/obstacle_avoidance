@@ -89,7 +89,6 @@ def callback_detectedobjects(data):
             polygons.append(p)
             centroids.append([p.centroid.x,p.centroid.y])
 
-    
     angles=np.zeros((len(waypoint_list),))
 
     for ij in range(len(waypoint_list)-1):
@@ -105,17 +104,16 @@ def callback_detectedobjects(data):
     if current_pose is not None:
         closest_waypoint = closest_point(waypoint_list,current_pose.pose.position.x,current_pose.pose.position.y) 
         if path_replanned==False: 
+            rospy.loginfo("Obstacle avoidance started,No valid points")
             la = lookahead
             if waypoints_size - closest_waypoint < la:
                 la = waypoints_size - closest_waypoint
             
             collision_examination(waypoint_list,closest_waypoint,closest_waypoint + la,angles)  
 
-
             if len(all_intersection) > 0 :
                 counter = np.bincount(np.array(all_intersection)) 
                 valid_points = np.asarray(np.where(counter > presence_threshold))
-            print(counter)
             
             if valid_points.size > 0:
                 mask = np.isin(midle_index_list,valid_points)
@@ -139,8 +137,6 @@ def callback_detectedobjects(data):
                         x2 = waypoint_list[k+1][0]
                         y1 = waypoint_list[k][1]
                         y2 = waypoint_list[k+1][1]
-                    
-                        angle = line_orientation(x1, x2, y1, y2)              # ori_wayp[i] is jo lehet, 
                         
                         distances_between_points += line_length(x1,x2,y1,y2)
                         original_distances.append(distances_between_points)
@@ -159,9 +155,9 @@ def callback_detectedobjects(data):
                             distance = 0
                     
                         if kiteres_iranya == "balra":
-                            elkerules_points.append((x1 + distance * np.cos(angle + np.pi / 2),y1 + distance * np.sin(angle + np.pi / 2)))
+                            elkerules_points.append((x1 + distance * np.cos(angles[k] + np.pi / 2),y1 + distance * np.sin(angles[k] + np.pi / 2)))
                         else:
-                            elkerules_points.append((x1 + distance * np.cos(angle - np.pi / 2),y1 + distance * np.sin(angle - np.pi / 2)))
+                            elkerules_points.append((x1 + distance * np.cos(angles[k] - np.pi / 2),y1 + distance * np.sin(angles[k] - np.pi / 2)))
                     
                     velocity_ls = LineString(np.column_stack((original_distances,elkerules[closest_waypoint+1:len(waypoint_list),3]))) 
                     elkerules_ls = LineString(elkerules_points) 
@@ -187,10 +183,9 @@ def callback_detectedobjects(data):
                     elkerules = np.column_stack((elkerules_,new_velocities_data)) 
                     path_replanned=True
                     collect_intersect_id=[]
-                else:
-                    rospy.logwarn("No valid center point")
-            else: 
-                rospy.loginfo("Obstacle avoidance started,No valid points")
+                elif center.size==0:
+                    rospy.logwarn('no valid centerpoint')
+
         else:
             replanned_path_start = closest_point(elkerules,waypoint_list[start_index][0],waypoint_list[start_index][1])
             replanned_path_ends = closest_point(elkerules,waypoint_list[end_index][0],waypoint_list[end_index][1])
@@ -200,14 +195,13 @@ def callback_detectedobjects(data):
             if len(collect_intersect_id) == 0:
                 rospy.loginfo("Path replanned,parameters seems ok")
             else:
-                rospy.logwarn("Path,replanned,parameters needs refactoring")
+                rospy.logwarn("Path replanned,parameters needs refactoring")
                 print(collect_intersect_id)            
 
 
 
 def collision_examination(data,closest_waypoint_,waypoints_size_,angles_):
     intersect_id=[]
-    #polygon_id = []
     if closest_waypoint_ is not None:
        
         for i in range(closest_waypoint_, waypoints_size_ ):                    #### waypoint_size ig megy az iteracio
@@ -218,7 +212,6 @@ def collision_examination(data,closest_waypoint_,waypoints_size_,angles_):
             p4 = rotate((data[i][0],data[i][1]),data[i][0] - (car_length-rear_axle_car_front_distance) , data[i][1] + (car_width/2),-angles_[i])
 
             car = Polygon([p1,p2,p3,p4])
-           
 
             for j in range(len(polygons)):                
                 if car.intersects(polygons[j]) == True:
@@ -235,9 +228,7 @@ def collision_examination(data,closest_waypoint_,waypoints_size_,angles_):
                     elif len(midle_index_list) != 0:
                         if midle_index not in midle_index_list:
                             midle_index_list.append(midle_index)      
-                inter_id= np.unique(intersect_id)
-                #print(intersect_id)
-                
+                inter_id= np.unique(intersect_id)  
         all_intersection.extend(inter_id)
                     
 
@@ -249,8 +240,6 @@ def line_orientation(x1, x2, y1, y2):
 def line_length(x1, x2, y1, y2):
     return ((x1-x2)**2 + (y1-y2)**2)**0.5
 
-
-
 def closest_point(data,x,y):
     min_distance, min_index = 10000000, 0
     for i,w in enumerate(data): 
@@ -260,7 +249,6 @@ def closest_point(data,x,y):
         if distance < min_distance:
             min_distance, min_index = distance,i
     return min_index
-
 
 def rotate( origin,point_x,point_y, radians):
     x,y = point_x,point_y
@@ -340,10 +328,7 @@ def publish_marker(pub_new_data_, pub_based_waypoint_list_):
                     marker_lane_points.color.g=1.0
                     marker_lane_points.color.b=0.0
 
-                elif i == closest_waypoint+la: 
-                    marker_lane_points.color.r=0.0
-                    marker_lane_points.color.g=0.0
-                    marker_lane_points.color.b=1.0
+                
                 marker_lane_points.color.a = 1.0
                 marker_lane_points.scale.x = 0.4
                 marker_lane_points.scale.y = 0.4
