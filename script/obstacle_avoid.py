@@ -29,6 +29,7 @@ centroids=[]
 midle_index_list=[]
 collect_intersect_id=[]
 path_replanned=False
+count=0
 
 all_intersection=[]
 la= None
@@ -50,6 +51,7 @@ distance_delta = rospy.get_param('/obstacle_avoidance_params/distance_delta')
 lookahead = rospy.get_param('/obstacle_avoidance_params/lookahead')
 polygon_size_threshold = rospy.get_param('/obstacle_avoidance_params/polygon_size_threshold')
 presence_threshold = rospy.get_param('/obstacle_avoidance_params/presence_threshold')
+delete_threshold = 7.0
 
 waypoint_list = []
 with open(rospy.get_param("waypoint_file_name")) as f:
@@ -70,13 +72,14 @@ def callback_current_pose(pose):
     current_pose = pose
 
 def callback_detectedobjects(data):
-    global waypoints_size,car_width,rear_axle_car_front_distance,car_length,closest_waypoint,polygons,collect_intersect_id,elkerules,polygons,centroids,midle_index_list,path_replanned,lookahead, start_index, end_index,polygon_size_threshold,presence_threshold,la
+    global waypoints_size,car_width,rear_axle_car_front_distance,car_length,closest_waypoint,polygons,collect_intersect_id,elkerules,polygons,centroids,midle_index_list,path_replanned,lookahead, start_index, end_index,polygon_size_threshold,presence_threshold,la,count,delete_threshold
     waypoints_size = len(waypoint_list)
     
     polygon_list=[]
     polygons=[]
     centroids = []
     valid_points=np.empty(0,)
+    
 
     for i in range (len(data.markers)):
         polygon_data=[]
@@ -102,17 +105,24 @@ def callback_detectedobjects(data):
       
     
     if current_pose is not None:
-        closest_waypoint = closest_point(waypoint_list,current_pose.pose.position.x,current_pose.pose.position.y) 
         if path_replanned==False: 
+            closest_waypoint = closest_point(waypoint_list,current_pose.pose.position.x,current_pose.pose.position.y) 
             rospy.loginfo("Obstacle avoidance started,No valid points")
             la = lookahead
             if waypoints_size - closest_waypoint < la:
                 la = waypoints_size - closest_waypoint
             
-            collision_examination(waypoint_list,closest_waypoint,closest_waypoint + la,angles)  
+            len_inter=collision_examination(waypoint_list,closest_waypoint,closest_waypoint + la,angles)  
+            
+            if len_inter==0:
+                count=count+1
+            elif len_inter!=0:
+                count=0
 
             if len(all_intersection) > 0 :
                 counter = np.bincount(np.array(all_intersection)) 
+                if count >= delete_threshold:
+                    counter=np.empty(0,)
                 valid_points = np.asarray(np.where(counter > presence_threshold))
             
             if valid_points.size > 0:
@@ -187,6 +197,7 @@ def callback_detectedobjects(data):
                     rospy.logwarn('no valid centerpoint')
 
         else:
+            closest_waypoint=closest_point(elkerules,current_pose.pose.position.x,current_pose.pose.position.y) 
             replanned_path_start = closest_point(elkerules,waypoint_list[start_index][0],waypoint_list[start_index][1])
             replanned_path_ends = closest_point(elkerules,waypoint_list[end_index][0],waypoint_list[end_index][1])
             
@@ -202,8 +213,9 @@ def callback_detectedobjects(data):
 
 def collision_examination(data,closest_waypoint_,waypoints_size_,angles_):
     intersect_id=[]
+    
     if closest_waypoint_ is not None:
-       
+        
         for i in range(closest_waypoint_, waypoints_size_ ):                    #### waypoint_size ig megy az iteracio
 
             p1 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] + (car_width/2),-angles_[i])
@@ -212,7 +224,7 @@ def collision_examination(data,closest_waypoint_,waypoints_size_,angles_):
             p4 = rotate((data[i][0],data[i][1]),data[i][0] - (car_length-rear_axle_car_front_distance) , data[i][1] + (car_width/2),-angles_[i])
 
             car = Polygon([p1,p2,p3,p4])
-
+            
             for j in range(len(polygons)):                
                 if car.intersects(polygons[j]) == True:
                     intersect_id.append(i)
@@ -228,8 +240,10 @@ def collision_examination(data,closest_waypoint_,waypoints_size_,angles_):
                     elif len(midle_index_list) != 0:
                         if midle_index not in midle_index_list:
                             midle_index_list.append(midle_index)      
-                inter_id= np.unique(intersect_id)  
+                inter_id = np.unique(intersect_id)
         all_intersection.extend(inter_id)
+        return inter_id.size
+   
                     
 
 
