@@ -51,7 +51,7 @@ distance_delta = rospy.get_param('/obstacle_avoidance_params/distance_delta')
 lookahead = rospy.get_param('/obstacle_avoidance_params/lookahead')
 polygon_size_threshold = rospy.get_param('/obstacle_avoidance_params/polygon_size_threshold')
 presence_threshold = rospy.get_param('/obstacle_avoidance_params/presence_threshold')
-delete_threshold = 7.0
+delete_threshold = rospy.get_param('/obstacle_avoidance_params/delete_threshold')
 
 waypoint_list = []
 with open(rospy.get_param("waypoint_file_name")) as f:
