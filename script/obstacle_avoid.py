@@ -132,8 +132,8 @@ def callback_detectedobjects(data):
                                 
                 if center.size > 0:                    
                     szakasz_yaw = np.arctan2((waypoint_list[valid_points[0][-1]][1] - waypoint_list[valid_points[0][0]][1]), (waypoint_list[valid_points[0][-1]][0]- waypoint_list[valid_points[0][0]][0]))
-                    start_index = closest_point(waypoint_list,waypoint_list[center[0]][0] + (kiteres_hossza  + (elkerules_hossza/2)) * np.cos(szakasz_yaw + np.pi),waypoint_list[center[0]][1] + ((elkerules_hossza/2) +kiteres_hossza) * np.sin(szakasz_yaw + np.pi))
-                    end_index = closest_point(waypoint_list,waypoint_list[center[0]][0] + (visszateres_hossza + (elkerules_hossza/2)) * np.cos(szakasz_yaw),waypoint_list[center[0]][1] + (visszateres_hossza + (elkerules_hossza/2)) * np.sin(szakasz_yaw))
+                    start_index = closest_point(waypoint_list,waypoint_list[center[0]][0] + (kiteres_hossza  + elkerules_hossza) * np.cos(szakasz_yaw + np.pi),waypoint_list[center[0]][1] + (elkerules_hossza +kiteres_hossza) * np.sin(szakasz_yaw + np.pi))
+                    end_index = closest_point(waypoint_list,waypoint_list[center[0]][0] + (visszateres_hossza) * np.cos(szakasz_yaw),waypoint_list[center[0]][1] + (visszateres_hossza) * np.sin(szakasz_yaw))
                     start_point = waypoint_list[start_index][0:2]
                     end_point = waypoint_list[end_index][0:2]
 
