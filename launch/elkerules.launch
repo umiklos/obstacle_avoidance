@@ -3,7 +3,7 @@
 <launch>
 <include file="$(find nissan_bringup)/launch/parking_challange.launch" />
 <node pkg="object_transform" type="object_transform" name="object_transform"/>
-<!--<node pkg="obstacle_avoidance" type="obstacle_avoidance" name="obstacle_avoidance_gui"/-->
+<node pkg="obstacle_avoidance" type="obstacle_avoidance" name="obstacle_avoidance_params"/>
 <!--<node pkg="obstacle_avoidance" type="obstacle_avoid.py" name="obstacle_avoid"/-->
 <!--node pkg="obstacle_avoidance" type="obstacle_avoid_trapez_v2.py" name="obstacle_avoid_trapez"/-->
 </launch>
