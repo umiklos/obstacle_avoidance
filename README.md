@@ -29,5 +29,43 @@ This repository contains the algorithm which is capable of the avoidance of one 
 ## Inputs of the algorihm
 
 * /current_pose
-* /points_no_ground (**Pointcloud2** from autoware ray ground filter)
-* /detection/lidar_detector/objects  **DetectedObjectArray**  from autoware  euclidean_cluster_detect)
+* /points_no_ground **Pointcloud2** from autoware ray ground filter 
+* /detection/lidar_detector/objects  **DetectedObjectArray**  from autoware  euclidean_cluster_detect
+* /converted_euclidean_objects **MarkerArray** from object_transform
+
+## Output
+* /global_waypoints/visualization **MarkerArray**
+* /base_waypoints **autoware_msgs/Lane**
+
+# How to install
+
+```
+cd catkin_ws/src
+git clone https://github.com/umiklos/obstacle_avoidance.git
+git clone https://github.com/umiklos/object_transform.git
+cd ..
+catkin build obstacle_avoidance object_transform
+source devel/setup.bash
+```
+
+## How to use it
+* Make sure that car parameters are exists
+```
+roslaunch nissan_bringup car_parameters_leaf.launch
+```
+* Set the original trajectory as a rosparam waypoint_file_name  
+For example:
+```
+rosparam set waypoint_file_name /home/miki/Downloads/elkerules_test4.csv
+```
+* Run the launch file:
+```
+roslaunch obstacle_avoidance elkerules.launch
+```
+* Set the parameters in rqt_reconfigure and run the node
+```
+rosrun rqt_reconfigure rqt_reconfigure
+rosrun obstacle_avoidance obstacle_avoid.py
+```
+
+
