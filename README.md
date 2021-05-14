@@ -4,7 +4,9 @@ This repository contains the algorithm which is capable of the avoidance of one 
 
 ## The parameters of the algorithm 
 
-![trapez_parameterekkel](https://user-images.githubusercontent.com/51919446/116975967-c42e5080-acc0-11eb-9e3c-d99198bf09f8.png)
+![trapez_parameterekkel](img/params_en01.svg)
+
+![trapez_parameterekkel](img/params_hu01.svg)
 
 * **kiteres_iranya**: From which side should the car avoid the obstacle [string] *jobbra* or *balra*
 
