@@ -35,6 +35,21 @@ all_intersection=[]
 la= None
 
 
+def line_orientation(x1, x2, y1, y2):
+    # https://en.wikipedia.org/wiki/Atan2
+    return np.arctan2((y2-y1), (x2-x1)) 
+
+def rotate( origin,point_x,point_y, radians):
+    x,y = point_x,point_y
+    offset_x, offset_y = origin
+    adjusted_x = (x - offset_x)
+    adjusted_y = (y - offset_y)
+    cos_rad = np.cos(radians)
+    sin_rad = np.sin(radians)
+    qx = offset_x + cos_rad * adjusted_x + sin_rad * adjusted_y
+    qy = offset_y + -sin_rad * adjusted_x + cos_rad * adjusted_y
+    return qx, qy
+
 #### params ###
 
 params=rospy.get_param(rospy.get_param("car_name"))
@@ -66,6 +81,29 @@ with open(rospy.get_param("waypoint_file_name")) as f:
         waypoint_list.append([x,y,yaw,lin_vel])
 elkerules=np.array(waypoint_list)
 
+angles=np.zeros((len(elkerules),))
+#car = np.zeros((len(elkerules),))
+car=[]
+
+for ij in range(len(elkerules)-1):
+    x1 = elkerules[ij][0]
+    x2 = elkerules[ij+1][0]
+    y1 = elkerules[ij][1]
+    y2 = elkerules[ij+1][1]
+
+    angles[ij] = line_orientation(x1, x2, y1, y2) 
+angles[-1]= elkerules[-1][2]
+
+for i in range(len(elkerules)):
+    p1 = rotate((elkerules[i][0],elkerules[i][1]),elkerules[i][0] + rear_axle_car_front_distance,elkerules[i][1] + (car_width/2),-angles[i])
+    p2 = rotate((elkerules[i][0],elkerules[i][1]),elkerules[i][0] + rear_axle_car_front_distance,elkerules[i][1] - (car_width/2),-angles[i])
+    p3 = rotate((elkerules[i][0],elkerules[i][1]),elkerules[i][0] - (car_length-rear_axle_car_front_distance) , elkerules[i][1] - (car_width/2),-angles[i])
+    p4 = rotate((elkerules[i][0],elkerules[i][1]),elkerules[i][0] - (car_length-rear_axle_car_front_distance) , elkerules[i][1] + (car_width/2),-angles[i])
+
+    car.append(Polygon([p1,p2,p3,p4]))
+car=np.array(car)
+
+
 
 def callback_current_pose(pose):
     global current_pose
@@ -92,164 +130,174 @@ def callback_detectedobjects(data):
             polygons.append(p)
             centroids.append([p.centroid.x,p.centroid.y])
 
-    angles=np.zeros((len(waypoint_list),))
+    #print(len(polygons))
 
-    for ij in range(len(waypoint_list)-1):
-        x1 = waypoint_list[ij][0]
-        x2 = waypoint_list[ij+1][0]
-        y1 = waypoint_list[ij][1]
-        y2 = waypoint_list[ij+1][1]
+    # angles=np.zeros((len(waypoint_list),))
+
+    # for ij in range(len(waypoint_list)-1):
+    #     x1 = waypoint_list[ij][0]
+    #     x2 = waypoint_list[ij+1][0]
+    #     y1 = waypoint_list[ij][1]
+    #     y2 = waypoint_list[ij+1][1]
     
-        angles[ij] = line_orientation(x1, x2, y1, y2) 
-    angles[-1]= waypoint_list[-1][2]
+    #     angles[ij] = line_orientation(x1, x2, y1, y2) 
+    # angles[-1]= waypoint_list[-1][2]
       
     
     if current_pose is not None:
         if path_replanned==False: 
             closest_waypoint = closest_point(waypoint_list,current_pose.pose.position.x,current_pose.pose.position.y) 
-            rospy.loginfo("Obstacle avoidance started,No valid points")
+            #rospy.loginfo("Obstacle avoidance started,No valid points")
             la = lookahead
             if waypoints_size - closest_waypoint < la:
                 la = waypoints_size - closest_waypoint
-            
-            len_inter=collision_examination(waypoint_list,closest_waypoint,closest_waypoint + la,angles)  
-            
-            if len_inter==0:
-                count=count+1
-            elif len_inter!=0:
-                count=0
 
-            if len(all_intersection) > 0 :
-                counter = np.bincount(np.array(all_intersection)) 
-                if count >= delete_threshold:
-                    counter=np.empty(0,)
-                valid_points = np.asarray(np.where(counter > presence_threshold))
+            #print(len(car))
             
-            if valid_points.size > 0:
-                mask = np.isin(midle_index_list,valid_points)
-                center= np.array(midle_index_list)
-                center=center[mask]     
+            #len_inter=collision_examination(closest_waypoint,closest_waypoint + la,car,polygons)
+            collision_examination(closest_waypoint,closest_waypoint + la,car,polygons)  
+
+            #collision_examination(waypoint_list,closest_waypoint,closest_waypoint + la,angles) 
+
+            # if len_inter==0:
+            #     count=count+1
+            # elif len_inter!=0:
+            #     count=0
+
+            # if len(all_intersection) > 0 :
+            #     counter = np.bincount(np.array(all_intersection)) 
+            #     if count >= delete_threshold:
+            #         counter=np.empty(0,)
+            #     valid_points = np.asarray(np.where(counter > presence_threshold))
+            
+            # if valid_points.size > 0:
+            #     mask = np.isin(midle_index_list,valid_points)
+            #     center= np.array(midle_index_list)
+            #     center=center[mask]     
                                 
-                if center.size > 0:                    
-                    szakasz_yaw = np.arctan2((waypoint_list[valid_points[0][-1]][1] - waypoint_list[valid_points[0][0]][1]), (waypoint_list[valid_points[0][-1]][0]- waypoint_list[valid_points[0][0]][0]))
-                    start_index = closest_point(waypoint_list,waypoint_list[center[0]][0] + (kiteres_hossza  + elkerules_hossza) * np.cos(szakasz_yaw + np.pi),waypoint_list[center[0]][1] + (elkerules_hossza +kiteres_hossza) * np.sin(szakasz_yaw + np.pi))
-                    end_index = closest_point(waypoint_list,waypoint_list[center[0]][0] + (visszateres_hossza) * np.cos(szakasz_yaw),waypoint_list[center[0]][1] + (visszateres_hossza) * np.sin(szakasz_yaw))
-                    start_point = waypoint_list[start_index][0:2]
-                    end_point = waypoint_list[end_index][0:2]
+            #     if center.size > 0:                    
+            #         szakasz_yaw = np.arctan2((waypoint_list[valid_points[0][-1]][1] - waypoint_list[valid_points[0][0]][1]), (waypoint_list[valid_points[0][-1]][0]- waypoint_list[valid_points[0][0]][0]))
+            #         start_index = closest_point(waypoint_list,waypoint_list[center[0]][0] + (kiteres_hossza  + elkerules_hossza) * np.cos(szakasz_yaw + np.pi),waypoint_list[center[0]][1] + (elkerules_hossza +kiteres_hossza) * np.sin(szakasz_yaw + np.pi))
+            #         end_index = closest_point(waypoint_list,waypoint_list[center[0]][0] + (visszateres_hossza) * np.cos(szakasz_yaw),waypoint_list[center[0]][1] + (visszateres_hossza) * np.sin(szakasz_yaw))
+            #         start_point = waypoint_list[start_index][0:2]
+            #         end_point = waypoint_list[end_index][0:2]
 
-                    elkerules_points=[]
-                    original_distances=[]
+            #         elkerules_points=[]
+            #         original_distances=[]
 
-                    actual_len_of_avoid = 0
-                    distances_between_points=0
-                    for k in range(closest_waypoint,len(waypoint_list)-1):
-                        x1 = waypoint_list[k][0]
-                        x2 = waypoint_list[k+1][0]
-                        y1 = waypoint_list[k][1]
-                        y2 = waypoint_list[k+1][1]
+            #         actual_len_of_avoid = 0
+            #         distances_between_points=0
+            #         for k in range(closest_waypoint,len(waypoint_list)-1):
+            #             x1 = waypoint_list[k][0]
+            #             x2 = waypoint_list[k+1][0]
+            #             y1 = waypoint_list[k][1]
+            #             y2 = waypoint_list[k+1][1]
                         
-                        distances_between_points += line_length(x1,x2,y1,y2)
-                        original_distances.append(distances_between_points)
+            #             distances_between_points += line_length(x1,x2,y1,y2)
+            #             original_distances.append(distances_between_points)
                         
-                        if k > start_index:
-                            actual_len_of_avoid += line_length(x1, x2, y1, y2)
-                            if actual_len_of_avoid < kiteres_hossza:
-                                distance = oldaliranyu_eltolas * (actual_len_of_avoid / kiteres_hossza)
-                            elif kiteres_hossza < actual_len_of_avoid < kiteres_hossza + elkerules_hossza:
-                                distance = oldaliranyu_eltolas
-                            elif kiteres_hossza + elkerules_hossza < actual_len_of_avoid < kiteres_hossza + elkerules_hossza + visszateres_hossza:
-                                distance = oldaliranyu_eltolas * -1 * ((actual_len_of_avoid - elkerules_hossza - kiteres_hossza - visszateres_hossza)/ visszateres_hossza)
-                            else:
-                                distance = 0
-                        else:
-                            distance = 0
+            #             if k > start_index:
+            #                 actual_len_of_avoid += line_length(x1, x2, y1, y2)
+            #                 if actual_len_of_avoid < kiteres_hossza:
+            #                     distance = oldaliranyu_eltolas * (actual_len_of_avoid / kiteres_hossza)
+            #                 elif kiteres_hossza < actual_len_of_avoid < kiteres_hossza + elkerules_hossza:
+            #                     distance = oldaliranyu_eltolas
+            #                 elif kiteres_hossza + elkerules_hossza < actual_len_of_avoid < kiteres_hossza + elkerules_hossza + visszateres_hossza:
+            #                     distance = oldaliranyu_eltolas * -1 * ((actual_len_of_avoid - elkerules_hossza - kiteres_hossza - visszateres_hossza)/ visszateres_hossza)
+            #                 else:
+            #                     distance = 0
+            #             else:
+            #                 distance = 0
                     
-                        if kiteres_iranya == "balra":
-                            elkerules_points.append((x1 + distance * np.cos(angles[k] + np.pi / 2),y1 + distance * np.sin(angles[k] + np.pi / 2)))
-                        else:
-                            elkerules_points.append((x1 + distance * np.cos(angles[k] - np.pi / 2),y1 + distance * np.sin(angles[k] - np.pi / 2)))
+            #             if kiteres_iranya == "balra":
+            #                 elkerules_points.append((x1 + distance * np.cos(angles[k] + np.pi / 2),y1 + distance * np.sin(angles[k] + np.pi / 2)))
+            #             else:
+            #                 elkerules_points.append((x1 + distance * np.cos(angles[k] - np.pi / 2),y1 + distance * np.sin(angles[k] - np.pi / 2)))
                     
-                    velocity_ls = LineString(np.column_stack((original_distances,elkerules[closest_waypoint+1:len(waypoint_list),3]))) 
-                    elkerules_ls = LineString(elkerules_points) 
-                    n=round(elkerules_ls.length/distance_delta)
-                    distances = np.linspace(0,elkerules_ls.length,n)
-                    distances_for_velocity = np.linspace(0,velocity_ls.length,n)
-                    new_velocities = [velocity_ls.interpolate(distance_v) for distance_v in distances_for_velocity]
-                    points = [elkerules_ls.interpolate(distance_ls) for distance_ls in distances]
-                    new_line = LineString(points)
-                    nw = LineString(new_velocities)
-                    new_velocities_data = np.zeros((len(nw.coords),1))  
-                    new_velocities_data[:,0] = nw.coords.xy[1] 
-                    elkerules_data=np.zeros((len(new_line.coords),2))
-                    elkerules_data[:,0]=new_line.coords.xy[0]
-                    elkerules_data[:,1]=new_line.coords.xy[1]
+            #         velocity_ls = LineString(np.column_stack((original_distances,elkerules[closest_waypoint+1:len(waypoint_list),3]))) 
+            #         elkerules_ls = LineString(elkerules_points) 
+            #         n=round(elkerules_ls.length/distance_delta)
+            #         distances = np.linspace(0,elkerules_ls.length,n)
+            #         distances_for_velocity = np.linspace(0,velocity_ls.length,n)
+            #         new_velocities = [velocity_ls.interpolate(distance_v) for distance_v in distances_for_velocity]
+            #         points = [elkerules_ls.interpolate(distance_ls) for distance_ls in distances]
+            #         new_line = LineString(points)
+            #         nw = LineString(new_velocities)
+            #         new_velocities_data = np.zeros((len(nw.coords),1))  
+            #         new_velocities_data[:,0] = nw.coords.xy[1] 
+            #         elkerules_data=np.zeros((len(new_line.coords),2))
+            #         elkerules_data[:,0]=new_line.coords.xy[0]
+            #         elkerules_data[:,1]=new_line.coords.xy[1]
 
-                    yaw = np.zeros((len(new_line.coords),))
-                    for i in range(len(elkerules_data)-1):
-                        yaw[i] = np.arctan2((elkerules_data[i+1,1]-elkerules_data[i,1]),(elkerules_data[i+1,0]- elkerules_data[i,0]))
-                    yaw[-1]= waypoint_list[-1][2]
+            #         yaw = np.zeros((len(new_line.coords),))
+            #         for i in range(len(elkerules_data)-1):
+            #             yaw[i] = np.arctan2((elkerules_data[i+1,1]-elkerules_data[i,1]),(elkerules_data[i+1,0]- elkerules_data[i,0]))
+            #         yaw[-1]= waypoint_list[-1][2]
                     
-                    elkerules_= np.column_stack((elkerules_data,yaw))
-                    elkerules = np.column_stack((elkerules_,new_velocities_data)) 
-                    path_replanned=True
-                    collect_intersect_id=[]
-                elif center.size==0:
-                    rospy.logwarn('no valid centerpoint')
+            #         elkerules_= np.column_stack((elkerules_data,yaw))
+            #         elkerules = np.column_stack((elkerules_,new_velocities_data)) 
+            #         path_replanned=True
+            #         collect_intersect_id=[]
+            #     elif center.size==0:
+            #         rospy.logwarn('no valid centerpoint')
 
         else:
-            closest_waypoint=closest_point(elkerules,current_pose.pose.position.x,current_pose.pose.position.y) 
-            replanned_path_start = closest_point(elkerules,waypoint_list[start_index][0],waypoint_list[start_index][1])
-            replanned_path_ends = closest_point(elkerules,waypoint_list[end_index][0],waypoint_list[end_index][1])
+            rospy.loginfo("Path replanned,parameters seems ok")
+            # closest_waypoint=closest_point(elkerules,current_pose.pose.position.x,current_pose.pose.position.y) 
+            # replanned_path_start = closest_point(elkerules,waypoint_list[start_index][0],waypoint_list[start_index][1])
+            # replanned_path_ends = closest_point(elkerules,waypoint_list[end_index][0],waypoint_list[end_index][1])
             
-            collision_examination(elkerules,replanned_path_start,replanned_path_ends,elkerules[:,2])
+            # #collision_examination(elkerules,replanned_path_start,replanned_path_ends,elkerules[:,2])
 
-            if len(collect_intersect_id) == 0:
-                rospy.loginfo("Path replanned,parameters seems ok")
-            else:
-                rospy.logwarn("Path replanned,parameters needs refactoring")
-                print(collect_intersect_id)            
+            # if len(collect_intersect_id) == 0:
+            #     rospy.loginfo("Path replanned,parameters seems ok")
+            # else:
+            #     rospy.logwarn("Path replanned,parameters needs refactoring")
+            #     print(collect_intersect_id)            
 
 
 
-def collision_examination(data,closest_waypoint_,waypoints_size_,angles_):
+def collision_examination(closest_waypoint_,waypoints_size_,car_,polygons_):
     intersect_id=[]
     
     if closest_waypoint_ is not None:
         
         for i in range(closest_waypoint_, waypoints_size_ ):                    #### waypoint_size ig megy az iteracio
 
-            p1 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] + (car_width/2),-angles_[i])
-            p2 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] - (car_width/2),-angles_[i])
-            p3 = rotate((data[i][0],data[i][1]),data[i][0] - (car_length-rear_axle_car_front_distance) , data[i][1] - (car_width/2),-angles_[i])
-            p4 = rotate((data[i][0],data[i][1]),data[i][0] - (car_length-rear_axle_car_front_distance) , data[i][1] + (car_width/2),-angles_[i])
+            # p1 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] + (car_width/2),-angles_[i])
+            # p2 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] - (car_width/2),-angles_[i])
+            # p3 = rotate((data[i][0],data[i][1]),data[i][0] - (car_length-rear_axle_car_front_distance) , data[i][1] - (car_width/2),-angles_[i])
+            # p4 = rotate((data[i][0],data[i][1]),data[i][0] - (car_length-rear_axle_car_front_distance) , data[i][1] + (car_width/2),-angles_[i])
 
-            car = Polygon([p1,p2,p3,p4])
+            # car = Polygon([p1,p2,p3,p4])
+            #print(car)
             
-            for j in range(len(polygons)):                
-                if car.intersects(polygons[j]) == True:
-                    intersect_id.append(i)
-                    midle_index=closest_point(waypoint_list,centroids[j][0],centroids[j][1])
-                    if len(collect_intersect_id) == 0:
-                        collect_intersect_id.append(i)
-                    elif len(collect_intersect_id) != 0:
-                        if i not in collect_intersect_id:
-                            collect_intersect_id.append(i)
-                            collect_intersect_id.sort
-                    if len(midle_index_list)== 0:
-                        midle_index_list.append(midle_index)
-                    elif len(midle_index_list) != 0:
-                        if midle_index not in midle_index_list:
-                            midle_index_list.append(midle_index)      
-                inter_id = np.unique(intersect_id)
-        all_intersection.extend(inter_id)
-        return inter_id.size
+            for j in range(len(polygons_)):                
+                if polygons_[j].touches(car_[i]) == True:
+                    intersect_id.append(j)
+                print(intersect_id)
+        #             midle_index=closest_point(waypoint_list,centroids[j][0],centroids[j][1])
+        #             if len(collect_intersect_id) == 0:
+        #                 collect_intersect_id.append(i)
+        #             elif len(collect_intersect_id) != 0:
+        #                 if i not in collect_intersect_id:
+        #                     collect_intersect_id.append(i)
+        #                     collect_intersect_id.sort
+        #             if len(midle_index_list)== 0:
+        #                 midle_index_list.append(midle_index)
+        #             elif len(midle_index_list) != 0:
+        #                 if midle_index not in midle_index_list:
+        #                     midle_index_list.append(midle_index)      
+        #         inter_id = np.unique(intersect_id)
+        # all_intersection.extend(inter_id)
+        # return inter_id.size
    
                     
 
 
-def line_orientation(x1, x2, y1, y2):
-    # https://en.wikipedia.org/wiki/Atan2
-    return np.arctan2((y2-y1), (x2-x1)) 
+# def line_orientation(x1, x2, y1, y2):
+#     # https://en.wikipedia.org/wiki/Atan2
+#     return np.arctan2((y2-y1), (x2-x1)) 
 
 def line_length(x1, x2, y1, y2):
     return ((x1-x2)**2 + (y1-y2)**2)**0.5
@@ -264,20 +312,56 @@ def closest_point(data,x,y):
             min_distance, min_index = distance,i
     return min_index
 
-def rotate( origin,point_x,point_y, radians):
-    x,y = point_x,point_y
-    offset_x, offset_y = origin
-    adjusted_x = (x - offset_x)
-    adjusted_y = (y - offset_y)
-    cos_rad = np.cos(radians)
-    sin_rad = np.sin(radians)
-    qx = offset_x + cos_rad * adjusted_x + sin_rad * adjusted_y
-    qy = offset_y + -sin_rad * adjusted_x + cos_rad * adjusted_y
-    return qx, qy
+#  def collision_examination(closest_waypoint_,closest_waypoint_,polygons_,car_):
+
+#      if closest_waypoint_ is not None:
+        
+#         for i in range(closest_waypoint_, closest_waypoint_ ):
+#             for j in range(len(polygons_)):
+#                 if car_[i].intersects(polygons_[j])==True:
+#                     intersect_id.append(i)
+
+# def rotate( origin,point_x,point_y, radians):
+#     x,y = point_x,point_y
+#     offset_x, offset_y = origin
+#     adjusted_x = (x - offset_x)
+#     adjusted_y = (y - offset_y)
+#     cos_rad = np.cos(radians)
+#     sin_rad = np.sin(radians)
+#     qx = offset_x + cos_rad * adjusted_x + sin_rad * adjusted_y
+#     qy = offset_y + -sin_rad * adjusted_x + cos_rad * adjusted_y
+#     return qx, qy
 
 
        
-def publish_marker(pub_new_data_, pub_based_waypoint_list_):
+#def publish_marker(pub_new_data_, pub_based_waypoint_list_):
+
+
+def pub():
+    global waypoint_list
+    
+    rospy.init_node('obstacle_avoidane')
+    rospy.Subscriber("/converted_euclidean_objects", vismsg.MarkerArray, callback_detectedobjects)
+    rospy.Subscriber("/current_pose", PoseStamped,callback_current_pose)
+    pub_new_data = rospy.Publisher("/global_waypoints/visualization",vismsg.MarkerArray, queue_size=1 ) 
+    pub_based_waypoint_list = rospy.Publisher("/base_waypoints",Lane,queue_size=1)
+    
+
+    # time.sleep(1)
+    # rospy.loginfo("Obstacle avoid py started")
+
+    # t = Thread(target=publish_marker, args=(pub_new_data,pub_based_waypoint_list))
+    # t.start()
+
+    
+
+    # # srv = Server(ParamsConfig, callback_config)
+    # # rospy.spin()
+    
+    # while not rospy.is_shutdown():
+
+    #     # cw.data = closest_waypoint
+    #     # pub_closest_waypoint.publish(closest_waypoint)
     msg_pub_lane = Lane()
     rate=rospy.Rate(10)
     ma = vismsg.MarkerArray()
@@ -367,43 +451,16 @@ def publish_marker(pub_new_data_, pub_based_waypoint_list_):
                 w0.twist.twist.linear.x = e[3]
                 msg_pub_lane.waypoints.append(w0)
             
-            pub_based_waypoint_list_.publish(msg_pub_lane)
-            pub_new_data_.publish(ma)
-
-
-def pub():
-    global waypoint_list
-    
-    rospy.init_node('obstacle_avoidane')
-    rospy.Subscriber("/converted_euclidean_objects", vismsg.MarkerArray, callback_detectedobjects)
-    rospy.Subscriber("/current_pose", PoseStamped,callback_current_pose)
-    pub_new_data = rospy.Publisher("/global_waypoints/visualization",vismsg.MarkerArray, queue_size=1 ) 
-    pub_based_waypoint_list = rospy.Publisher("/base_waypoints",Lane,queue_size=1)
-    
-
-    # time.sleep(1)
-    # rospy.loginfo("Obstacle avoid py started")
-
-    t = Thread(target=publish_marker, args=(pub_new_data,pub_based_waypoint_list))
-    t.start()
-
-    
-
-    # srv = Server(ParamsConfig, callback_config)
-    # rospy.spin()
-    
-    while not rospy.is_shutdown():
-
-        # cw.data = closest_waypoint
-        # pub_closest_waypoint.publish(closest_waypoint)
+            pub_based_waypoint_list.publish(msg_pub_lane)
+            pub_new_data.publish(ma)
         
         
-        #if elkerules is not None or elkerules is not []:
-        #    publish_marker(pub_new_data)
+    #     #if elkerules is not None or elkerules is not []:
+    #     #    publish_marker(pub_new_data)
 
-        #rate.sleep()
+    #     #rate.sleep()
         
-        rospy.spin()
+    #     rospy.spin()
        
 
 if __name__ == '__main__':
