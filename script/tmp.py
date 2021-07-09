@@ -6,6 +6,8 @@ from shapely.geometry import Point
 import visualization_msgs.msg as vismsg
 from geometry_msgs.msg import PoseStamped,TwistStamped
 import math
+from shapely.geometry import Polygon, LineString, Point
+
 
 params=rospy.get_param(rospy.get_param("car_name"))
 car_width = params['car_width']
@@ -116,33 +118,53 @@ def callback_detectedobjects(data):
         polygon_list.append(polygon_data)
 
     polygon_list=np.array(polygon_list)
+
+
     
-    # print(polygon_list.shape)
+    #print(polygon_list.shape)
 
     if current_pose is not None:
 
-        
+        near_waypoint=[]
+
         closest_waypoint = closest_point(waypoint_list,current_pose.pose.position.x,current_pose.pose.position.y) 
         
         la = lookahead
         if waypoints_size - closest_waypoint < la:
             la = waypoints_size - closest_waypoint
 
+        for i in range(closest_waypoint,waypoints_size):
+            for j in range(len(polygon_list)):
+                for k in range(len(polygon_list[j])):
+
+                    distance=math.sqrt(((polygon_list[j][k][0]-elkerules[i][0])**2)+(((polygon_list[j][k][1]-elkerules[i][1])**2)))
+                    if distance < 5:
+                        near_waypoint.append(j)
+        near_waypoint=np.unique(near_waypoint)
+
         a=[]
-        for k in range(closest_waypoint,waypoints_size):
-            b=[]
-            for i in range(len(polygon_list)):
-                c=[]
-                for j in range(len(polygon_list[i])-1):
-                    d=[]
-                    for l in range(4):
+        for i in range(closest_waypoint,waypoints_size):
+            for l in range(4):
+                for k in near_waypoint:
+                    for j in range(len(polygon_list[k])):
+                        a.append(intersect(car[i,l],car[i,l+1],polygon_list[k][j],polygon_list[k][j+1]))
+            
+        
+
+                         
+
+        b=[]
+        #     for i in range(len(polygon_list)):
+        #         c=[]
+        #         for j in range(len(polygon_list[i])-1):
+        #             d=[]
                         
-                        d.append(intersect(car[k,l],car[k,l+1],polygon_list[i][j],polygon_list[i][j+1]))
+        #                 d.append(intersect(car[k,l],car[k,l+1],polygon_list[i][j],polygon_list[i][j+1]))
                         
-                    c.append(d)
-                    print(c)
-                b.append(c)
-            a.append(b)
+        #             c.append(d)
+        #             print(c)
+        #         b.append(c)
+        #     a.append(b)
         
 
         #         polygon_data=[]
