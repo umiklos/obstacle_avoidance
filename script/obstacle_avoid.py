@@ -2,6 +2,7 @@
 
 import rospy
 import numpy as np
+
 import matplotlib.pyplot as plt
 import time
 from threading import Thread
@@ -129,6 +130,7 @@ def callback_detectedobjects(data):
         if p.length > polygon_size_threshold:        
             polygons.append(p)
             centroids.append([p.centroid.x,p.centroid.y])
+    polygons=np.array(polygons)
 
     #print(len(polygons))
 
@@ -147,15 +149,15 @@ def callback_detectedobjects(data):
     if current_pose is not None:
         if path_replanned==False: 
             closest_waypoint = closest_point(waypoint_list,current_pose.pose.position.x,current_pose.pose.position.y) 
-            #rospy.loginfo("Obstacle avoidance started,No valid points")
+            rospy.loginfo("Obstacle avoidance started,No valid points")
             la = lookahead
             if waypoints_size - closest_waypoint < la:
                 la = waypoints_size - closest_waypoint
 
             #print(len(car))
             
-            #len_inter=collision_examination(closest_waypoint,closest_waypoint + la,car,polygons)
-            collision_examination(closest_waypoint,closest_waypoint + la,car,polygons)  
+            len_inter=collision_examination(closest_waypoint,closest_waypoint + la,car,polygons)
+            #collision_examination(closest_waypoint,closest_waypoint + la,car,polygons)  
 
             #collision_examination(waypoint_list,closest_waypoint,closest_waypoint + la,angles) 
 
@@ -262,7 +264,7 @@ def collision_examination(closest_waypoint_,waypoints_size_,car_,polygons_):
     
     if closest_waypoint_ is not None:
         
-        for i in range(closest_waypoint_, waypoints_size_ ):                    #### waypoint_size ig megy az iteracio
+        for i in range(closest_waypoint_, waypoints_size_):                    #### waypoint_size ig megy az iteracio
 
             # p1 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] + (car_width/2),-angles_[i])
             # p2 = rotate((data[i][0],data[i][1]),data[i][0] + rear_axle_car_front_distance,data[i][1] - (car_width/2),-angles_[i])
@@ -273,7 +275,7 @@ def collision_examination(closest_waypoint_,waypoints_size_,car_,polygons_):
             #print(car)
             
             for j in range(len(polygons_)):                
-                if polygons_[j].touches(car_[i]) == True:
+                if polygons_[j].intersects(car_[i]) == True:
                     intersect_id.append(j)
                 print(intersect_id)
         #             midle_index=closest_point(waypoint_list,centroids[j][0],centroids[j][1])
