@@ -42,6 +42,8 @@ def closest_point(data,x,y):
             min_distance, min_index = distance,i
     return min_index
 
+    
+
 def line_orientation(x1, x2, y1, y2):
     # https://en.wikipedia.org/wiki/Atan2
     return np.arctan2((y2-y1), (x2-x1))
@@ -135,7 +137,7 @@ def callback_detectedobjects(data):
         if path_replanned==False:
             near_waypoint_polygon_indexes=[]
             detected_waypoints=[]
-
+            rospy.loginfo("Obstacle avoidance started,No valid points")
             closest_waypoint = closest_point(elkerules,current_pose.pose.position.x,current_pose.pose.position.y) 
             
             la = lookahead
@@ -153,7 +155,7 @@ def callback_detectedobjects(data):
 
             #print(elkerules[0][0])
 
-            data2=elkerules[detected_waypoints]
+            #data2=elkerules[detected_waypoints]
             
             midle_index=[]
             intersected_waypoints=[]
@@ -162,23 +164,22 @@ def callback_detectedobjects(data):
                 f=[]
                 for k in near_waypoint_polygon_indexes:
                     g=[]
-                    #midle_index.append(closest_point(data2,centroids[k,0],centroids[k,1]))
+                    midle_index.append(closest_point(elkerules,centroids[k,0],centroids[k,1]))
                     for l in range(1,len(polygon_list[k])):
                         for m in range(1,5):
                             f.append(intersect(car[i,m-1],car[i,m],polygon_list[k][l-1],polygon_list[k][l]))
-                    if np.any(f)==True:
-                        g.append(k)
+                   
                 if (np.any(f))==True:
                     intersected_waypoints.append(i)
-                if len(g) >0:
-                    midle_index.append(g)
-            midle_index=np.unique(midle_index)  
+               
+            midle_index=(np.unique(midle_index))
                     # if len(collect_intersected_waypoints)==0:
                     #     collect_intersected_waypoints.append(i)                
                     # elif len(collect_intersected_waypoints) != 0:
                     #     if i not in collect_intersected_waypoints:
                     #         collect_intersected_waypoints.append(i)
                     #         collect_intersected_waypoints.sort
+            #print(intersected_waypoints)
             
             inter_id=np.unique(intersected_waypoints)
             collect_intersected_waypoints.extend(inter_id)
@@ -213,18 +214,21 @@ def callback_detectedobjects(data):
 
                 #print(valid_points)
 
-            if valid_points.size > 0:
-                center=closest_point(elkerules,centroids[midle_index,0],centroids[midle_index,1])
+            
 
-                #print(center)
-            #     mask = np.isin(midle_index_list,valid_points)
-            #     center= np.array(midle_index_list)
-            #     center=center[mask]     
+            if valid_points.size > 0:
+                
+                #center=closest_point(elkerules,centroids[min_index_,0],centroids[min_index_,1])
+                #center=closest_point(elkerules,ce[0],ce[1])
+                #print(center,midle_index,near_waypoint_polygon_indexes)
+                mask = np.isin(midle_index,valid_points)
+                #center= np.array(midle_index_list)
+                center=midle_index[mask]     
                                 
                 if center is not None:                    
                     szakasz_yaw = np.arctan2((waypoint_list[valid_points[0][-1]][1] - waypoint_list[valid_points[0][0]][1]), (waypoint_list[valid_points[0][-1]][0]- waypoint_list[valid_points[0][0]][0]))
-                    start_index = closest_point(waypoint_list,waypoint_list[center][0] + (kiteres_hossza  + elkerules_hossza) * np.cos(szakasz_yaw + np.pi),waypoint_list[center][1] + (elkerules_hossza +kiteres_hossza) * np.sin(szakasz_yaw + np.pi))
-                    end_index = closest_point(waypoint_list,waypoint_list[center][0] + (visszateres_hossza) * np.cos(szakasz_yaw),waypoint_list[center][1] + (visszateres_hossza) * np.sin(szakasz_yaw))
+                    start_index = closest_point(waypoint_list,waypoint_list[center[0]][0] + (kiteres_hossza  + elkerules_hossza) * np.cos(szakasz_yaw + np.pi),waypoint_list[center[0]][1] + (elkerules_hossza +kiteres_hossza) * np.sin(szakasz_yaw + np.pi))
+                    end_index = closest_point(waypoint_list,waypoint_list[center[0]][0] + (visszateres_hossza) * np.cos(szakasz_yaw),waypoint_list[center[0]][1] + (visszateres_hossza) * np.sin(szakasz_yaw))
                     start_point = waypoint_list[start_index][0:2]
                     end_point = waypoint_list[end_index][0:2]
 
@@ -259,6 +263,8 @@ def callback_detectedobjects(data):
                             elkerules_points.append((x1 + distance * np.cos(angles[k] + np.pi / 2),y1 + distance * np.sin(angles[k] + np.pi / 2)))
                         else:
                             elkerules_points.append((x1 + distance * np.cos(angles[k] - np.pi / 2),y1 + distance * np.sin(angles[k] - np.pi / 2)))
+
+                    #distance_between_start_and_current=line_length(elkerules[closest_waypoint][0],elkerules[start_index][0],elkerules[closest_waypoint][1],elkerules[start_index][1]) 
                     
                     velocity_ls = LineString(np.column_stack((original_distances,elkerules[closest_waypoint+1:len(waypoint_list),3]))) 
                     elkerules_ls = LineString(elkerules_points) 
@@ -286,6 +292,8 @@ def callback_detectedobjects(data):
                     collect_intersect_id=[]
                 elif center.size==0:
                     rospy.logwarn('no valid centerpoint')
+        else: 
+            rospy.loginfo('path replanned')
 
             
 
