@@ -31,6 +31,7 @@ collect_intersected_waypoints=[]
 midle_index_list=[]
 path_replanned=False
 count=0
+center=0
 
 def closest_point(data,x,y):
     min_distance, min_index = 10000000, 0
@@ -116,7 +117,7 @@ def callback_current_pose(pose):
     current_pose = pose
 
 def callback_detectedobjects(data):
-    global collect_intersected_waypoints,midle_index_list,path_replanned,elkerules,count
+    global collect_intersected_waypoints,midle_index_list,path_replanned,elkerules,count,center
     waypoints_size = len(waypoint_list)
     centroids=np.empty((len(data.markers),2))
     polygon_list=[]
@@ -137,7 +138,7 @@ def callback_detectedobjects(data):
         if path_replanned==False:
             near_waypoint_polygon_indexes=[]
             detected_waypoints=[]
-            rospy.loginfo("Obstacle avoidance started,No valid points")
+            #rospy.loginfo("Obstacle avoidance started,No valid points")
             closest_waypoint = closest_point(elkerules,current_pose.pose.position.x,current_pose.pose.position.y) 
             
             la = lookahead
@@ -173,6 +174,7 @@ def callback_detectedobjects(data):
                     intersected_waypoints.append(i)
                
             midle_index=(np.unique(midle_index))
+            #print(midle_index)
                     # if len(collect_intersected_waypoints)==0:
                     #     collect_intersected_waypoints.append(i)                
                     # elif len(collect_intersected_waypoints) != 0:
@@ -212,20 +214,21 @@ def callback_detectedobjects(data):
                     counter=np.empty(0,)
                 valid_points = np.asarray(np.where(counter > presence_threshold))
 
-                #print(valid_points)
+                #print(valid_points,midle_index)
 
             
 
-            if valid_points.size > 0:
+            if valid_points.size > 1:
                 
                 #center=closest_point(elkerules,centroids[min_index_,0],centroids[min_index_,1])
                 #center=closest_point(elkerules,ce[0],ce[1])
                 #print(center,midle_index,near_waypoint_polygon_indexes)
                 mask = np.isin(midle_index,valid_points)
                 #center= np.array(midle_index_list)
-                center=midle_index[mask]     
+                center=midle_index[mask]    
+                
                                 
-                if center is not None:                    
+                if center.size > 0:                    
                     szakasz_yaw = np.arctan2((waypoint_list[valid_points[0][-1]][1] - waypoint_list[valid_points[0][0]][1]), (waypoint_list[valid_points[0][-1]][0]- waypoint_list[valid_points[0][0]][0]))
                     start_index = closest_point(waypoint_list,waypoint_list[center[0]][0] + (kiteres_hossza  + elkerules_hossza) * np.cos(szakasz_yaw + np.pi),waypoint_list[center[0]][1] + (elkerules_hossza +kiteres_hossza) * np.sin(szakasz_yaw + np.pi))
                     end_index = closest_point(waypoint_list,waypoint_list[center[0]][0] + (visszateres_hossza) * np.cos(szakasz_yaw),waypoint_list[center[0]][1] + (visszateres_hossza) * np.sin(szakasz_yaw))
@@ -273,7 +276,7 @@ def callback_detectedobjects(data):
                             first_part.append((x1,y1))
                             vx.append((distances_for_start_point,waypoint_list[k][3]))
                             
-                    distance_between_start_and_current=line_length(elkerules[closest_waypoint][0],elkerules[start_index][0],elkerules[closest_waypoint][1],elkerules[start_index][1]) 
+                    #distance_between_start_and_current=line_length(elkerules[closest_waypoint][0],elkerules[start_index][0],elkerules[closest_waypoint][1],elkerules[start_index][1]) 
                     #vx=(d,elkerules[closest_waypoint:start_index+1,3])
                     #print(len(elkerules[start_index+1:len(waypoint_list)-1,3]))
 
@@ -309,6 +312,7 @@ def callback_detectedobjects(data):
                     collect_intersect_id=[]
                 elif center.size==0:
                     rospy.logwarn('no valid centerpoint')
+        
         else: 
             rospy.loginfo('path replanned')
 
@@ -383,7 +387,7 @@ def pub():
                 marker_lane_points.color.r = 1.0
                 marker_lane_points.color.g = 0.0
                 marker_lane_points.color.b = 0.0
-                if i in collect_intersected_waypoints:
+                if i == center:
                     marker_lane_points.color.r=0.0
                     marker_lane_points.color.g=1.0
                     marker_lane_points.color.b=0.0
