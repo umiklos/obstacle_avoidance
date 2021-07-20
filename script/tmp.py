@@ -234,9 +234,13 @@ def callback_detectedobjects(data):
 
                     elkerules_points=[]
                     original_distances=[]
+                    first_part=[]
+                    vx,d=[],[]
+
 
                     actual_len_of_avoid = 0
                     distances_between_points=0
+                    distances_for_start_point=0
                     for k in range(closest_waypoint,len(waypoint_list)-1):
                         x1 = waypoint_list[k][0]
                         x2 = waypoint_list[k+1][0]
@@ -244,10 +248,11 @@ def callback_detectedobjects(data):
                         y2 = waypoint_list[k+1][1]
                         
                         distances_between_points += line_length(x1,x2,y1,y2)
-                        original_distances.append(distances_between_points)
+                        #original_distances.append(distances_between_points)
                         
                         if k > start_index:
                             actual_len_of_avoid += line_length(x1, x2, y1, y2)
+                            original_distances.append(actual_len_of_avoid)
                             if actual_len_of_avoid < kiteres_hossza:
                                 distance = oldaliranyu_eltolas * (actual_len_of_avoid / kiteres_hossza)
                             elif kiteres_hossza < actual_len_of_avoid < kiteres_hossza + elkerules_hossza:
@@ -256,25 +261,37 @@ def callback_detectedobjects(data):
                                 distance = oldaliranyu_eltolas * -1 * ((actual_len_of_avoid - elkerules_hossza - kiteres_hossza - visszateres_hossza)/ visszateres_hossza)
                             else:
                                 distance = 0
+
+                            if kiteres_iranya == "balra":
+                                elkerules_points.append((x1 + distance * np.cos(angles[k] + np.pi / 2),y1 + distance * np.sin(angles[k] + np.pi / 2)))
+                            else:
+                                elkerules_points.append((x1 + distance * np.cos(angles[k] - np.pi / 2),y1 + distance * np.sin(angles[k] - np.pi / 2)))
                         else:
                             distance = 0
-                    
-                        if kiteres_iranya == "balra":
-                            elkerules_points.append((x1 + distance * np.cos(angles[k] + np.pi / 2),y1 + distance * np.sin(angles[k] + np.pi / 2)))
-                        else:
-                            elkerules_points.append((x1 + distance * np.cos(angles[k] - np.pi / 2),y1 + distance * np.sin(angles[k] - np.pi / 2)))
+                            distances_for_start_point+= line_length(x1,x2,y1,y2)
+                            #d.append(distances_for_start_point)    
+                            first_part.append((x1,y1))
+                            vx.append((distances_for_start_point,waypoint_list[k][3]))
+                            
+                    distance_between_start_and_current=line_length(elkerules[closest_waypoint][0],elkerules[start_index][0],elkerules[closest_waypoint][1],elkerules[start_index][1]) 
+                    #vx=(d,elkerules[closest_waypoint:start_index+1,3])
+                    #print(len(elkerules[start_index+1:len(waypoint_list)-1,3]))
 
-                    #distance_between_start_and_current=line_length(elkerules[closest_waypoint][0],elkerules[start_index][0],elkerules[closest_waypoint][1],elkerules[start_index][1]) 
-                    
-                    velocity_ls = LineString(np.column_stack((original_distances,elkerules[closest_waypoint+1:len(waypoint_list),3]))) 
+
+                    velocity_ls = LineString(np.column_stack((original_distances,elkerules[start_index+1:len(waypoint_list)-1,3])))
                     elkerules_ls = LineString(elkerules_points) 
                     n=round(elkerules_ls.length/distance_delta)
                     distances = np.linspace(0,elkerules_ls.length,n)
                     distances_for_velocity = np.linspace(0,velocity_ls.length,n)
-                    new_velocities = [velocity_ls.interpolate(distance_v) for distance_v in distances_for_velocity]
+                    new_velocities =([velocity_ls.interpolate(distance_v) for distance_v in distances_for_velocity])
                     points = [elkerules_ls.interpolate(distance_ls) for distance_ls in distances]
-                    new_line = LineString(points)
-                    nw = LineString(new_velocities)
+                    v=vx+new_velocities
+                    #v=np.concatenate(vx,new_velocities)
+
+                    p1=first_part+points
+                    new_line = LineString(p1)
+                    
+                    nw = LineString(v)
                     new_velocities_data = np.zeros((len(nw.coords),1))  
                     new_velocities_data[:,0] = nw.coords.xy[1] 
                     elkerules_data=np.zeros((len(new_line.coords),2))
