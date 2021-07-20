@@ -138,7 +138,7 @@ def callback_detectedobjects(data):
         if path_replanned==False:
             near_waypoint_polygon_indexes=[]
             detected_waypoints=[]
-            #rospy.loginfo("Obstacle avoidance started,No valid points")
+            rospy.loginfo("Obstacle avoidance started,No valid points")
             closest_waypoint = closest_point(elkerules,current_pose.pose.position.x,current_pose.pose.position.y) 
             
             la = lookahead
