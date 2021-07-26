@@ -234,7 +234,7 @@ def callback_detectedobjects(data):
                         v1 = elkerules[k][3]
                         v2 = elkerules[k+1][3]
                         
-                        if k > start_index:
+                        if k >= start_index:
                             actual_len_of_avoid += line_length(x1, x2, y1, y2)
                             velocities_from_avoidance += line_length(x1,x2,v1,v2)
                             velocities.append(velocities_from_avoidance)
@@ -254,35 +254,38 @@ def callback_detectedobjects(data):
                                 elkerules_points.append((x1 + distance * np.cos(angles[k] - np.pi / 2),y1 + distance * np.sin(angles[k] - np.pi / 2)))
                         else:
                             distance = 0
-                            distances_for_start_point+= line_length(x1,x2,y1,y2)
+                            #distances_for_start_point+= line_length(x1,x2,y1,y2)
                                
-                            first_part.append((x1,y1))
+                            #first_part.append((x1,y1))
                             #vx.append((distances_for_start_point,elkerules[k][3]))
 
+                    first_part=elkerules[closest_waypoint:start_index,0:2]
                     #velocity_length=distances_for_start_point + original_distances[-1]
                     vx=elkerules[closest_waypoint:start_index+1,3]
+                    elkerules_data=np.concatenate((first_part,elkerules_points))
                     #velocity_ls = LineString(np.column_stack((original_distances,elkerules[start_index+1:len(elkerules)-1,3])))
                     elkerules_ls = LineString(elkerules_points) 
                     n=round(elkerules_ls.length/distance_delta)
                     distances = np.linspace(0,elkerules_ls.length,n)
                     distances_for_velocity = np.linspace(0,velocities[-1],n)
 
-                    new_velocities=np.interp(distances_for_velocity,original_distances,elkerules[start_index+1:len(elkerules)-1,3])
+                    #new_velocities=np.interp(distances_for_velocity,original_distances,elkerules[start_index+1:len(elkerules)-1,3])
 
                     #new_velocities =([velocity_ls.interpolate(distance_v) for distance_v in distances_for_velocity])
-                    points = [elkerules_ls.interpolate(distance_ls) for distance_ls in distances]
-                    v=np.concatenate((vx,new_velocities))
-                    p1=first_part+points
-                    new_line = LineString(p1)
+                    #points = [elkerules_ls.interpolate(distance_ls) for distance_ls in distances]
+                    v=elkerules[closest_waypoint+1:,3]#np.concatenate((vx,new_velocities))
+                    #p1=first_part+points
+                    #new_line = LineString(p1)
                     
                     #nw = LineString(v)
                     #new_velocities_data = np.zeros((len(v),1))  
                     #new_velocities_data[:,0] = nw.coords.xy[1] 
-                    elkerules_data=np.zeros((len(new_line.coords),2))
-                    elkerules_data[:,0]=new_line.coords.xy[0]
-                    elkerules_data[:,1]=new_line.coords.xy[1]
+                    # elkerules_data=np.zeros((len(new_line.coords),2))
+                    # elkerules_data[:,0]=new_line.coords.xy[0]
+                    #elkerules_data[:,1]=new_line.coords.xy[1]
+                    #print('a')
 
-                    yaw = np.zeros((len(new_line.coords),))
+                    yaw = np.zeros((len(elkerules_data),))
                     for i in range(len(elkerules_data)-1):
                         yaw[i] = np.arctan2((elkerules_data[i+1,1]-elkerules_data[i,1]),(elkerules_data[i+1,0]- elkerules_data[i,0]))
                     yaw[-1]= elkerules[-1][2]
