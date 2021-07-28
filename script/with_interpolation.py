@@ -45,27 +45,6 @@ def closest_point(data,x,y):
             min_distance, min_index = distance,i
     return min_index
 
-def Lokalizalas(x, X):
-	k=0
-	m=0
-	l=m-1
-	if x==X[l]:
-		k=l-1
-	while l-k>1:
-		m=(k+l)/2
-		if x<X[m]:
-			l=m
-		else: 
-			if x==X[m]:
-				return m
-			else:
-				k=m
-	return k
-
-def LinearisInterpolacio(x, X, Y):
-	i=0
-	i=Lokalizalas(x, X)
-	return Y[i]+(Y[i+1]-Y[i])/(X[i+1]-X[i])*(x-X[i])	
 
     
 
@@ -292,73 +271,7 @@ def callback_detectedobjects(data):
                     elkerules = np.column_stack((elkerules_,v)) 
                     path_replanned=True
 
-                    """
-                    #print(elkerules[0,0:2])        
-                    first_part=elkerules[closest_waypoint:start_index+1,0:2]
                     
-                    #v_ls=np.column_stack((original_distances,elkerules[start_index+1:len(elkerules)-1,3]))
-
-                    velocity_ls = LineString(np.column_stack((original_distances,elkerules[start_index+1:len(elkerules)-1,3])))
-                    elkerules_ls = LineString(elkerules_points) 
-                
-                    #hossz=elkerules_ls.length
-                    elkerules_points=np.array(elkerules_points)
-                    n=round(original_distances[-1]/distance_delta)
-                    #n=round(elkerules_ls.length/distance_delta)
-                    #distances = np.linspace(0,elkerules_ls.length,n)
-
-                    distances= np.linspace(0,original_distances[-1],n)
-                    distances_for_interpolation=distances+elkerules_points[0,0]
-
-                    y_points=np.interp(distances_for_interpolation,elkerules_points[:,0],elkerules_points[:,1])
-
-                    #distances_for_interpolation_1=distances_1+elkerules[start_index][0]
-
-                    #search_indexes_1=np.searchsorted(elkerules_points[:,0],distances_for_interpolation_1)
-                
-
-                    #search_indexes=np.searchsorted(elkerules_points[:,0],distances_for_interpolation)
-
-                    points=np.column_stack((distances_for_interpolation,y_points))
-
-                    distances_for_velocity = np.linspace(0,velocity_ls.length,n)
-
-                    new_velocities =([velocity_ls.interpolate(distance_v) for distance_v in distances_for_velocity])
-                    #points = [elkerules_ls.interpolate(distance_ls) for distance_ls in distances]
-
-                    #points_y=np.empty((len(distances),))
-
-
-
-                    # for i in range(len(distances)):
-                    #     points_y[i]=LinearisInterpolacio(distances[i],elkerules_points[:,0],elkerules_points[:,1])
-
-                    #for i in range(len(distances)):
-                        #print(i)
-                        # points_y[i]= ((distances[i]+elkerules[0,0])-elkerules[i,0]/(elkerules[i+1,0]-elkerules[i,0]))*(elkerules[i+1,1]-elkerules[i,1]) + elkerules[i,0]
-                        #points_y[i]= (distances[i]+elkerules_points[0][0]-elkerules_points[i][0]) / (elkerules_points[i+1][0]-elkerules_points[i][0])
-                    
-                    p1=np.concatenate((first_part,points))
-                    v=vx+new_velocities
-                    #p1=first_part+points
-                    #new_line = LineString(p1)
-                    
-                    nw = LineString(v)
-                    new_velocities_data = np.zeros((len(nw.coords),1))  
-                    new_velocities_data[:,0] = nw.coords.xy[1] 
-                    # elkerules_data=np.zeros((len(p1),2))
-                    # elkerules_data[:,0]=new_line.coords.xy[0]
-                    # elkerules_data[:,1]=new_line.coords.xy[1]
-
-                    yaw = np.zeros(len(p1),)
-                    for i in range(len(p1)-1):
-                        yaw[i] = np.arctan2((p1[i+1,1]-p1[i,1]),(p1[i+1,0]- p1[i,0]))
-                    yaw[-1]= elkerules[-1][2]
-                    
-                    elkerules_= np.column_stack((p1,yaw))
-                    elkerules = np.column_stack((elkerules_,new_velocities_data)) 
-                    path_replanned=True
-                    """
 
                 elif center.size==0:
                     rospy.logwarn('no valid centerpoint')
