@@ -234,9 +234,9 @@ def callback_detectedobjects(data):
                             #first_part.append((x1,y1))
                             #vx.append((distances_for_start_point,elkerules[k][3]))
 
-                    first_part=elkerules[closest_waypoint:start_index,0:2]
+                    first_part=elkerules[closest_waypoint+1:start_index,0:2]
                     #velocity_length=distances_for_start_point + original_distances[-1]
-                    vx=elkerules[closest_waypoint:start_index+1,3]
+                    #vx=elkerules[closest_waypoint+1:start_index+1,3]
                     elkerules_data=np.concatenate((first_part,elkerules_points))
                     #velocity_ls = LineString(np.column_stack((original_distances,elkerules[start_index+1:len(elkerules)-1,3])))
                     elkerules_ls = LineString(elkerules_points) 
@@ -248,7 +248,7 @@ def callback_detectedobjects(data):
 
                     #new_velocities =([velocity_ls.interpolate(distance_v) for distance_v in distances_for_velocity])
                     #points = [elkerules_ls.interpolate(distance_ls) for distance_ls in distances]
-                    v=elkerules[closest_waypoint+1:,3]#np.concatenate((vx,new_velocities))
+                    v=elkerules[closest_waypoint+2:,3]#np.concatenate((vx,new_velocities))
                     
                     
 

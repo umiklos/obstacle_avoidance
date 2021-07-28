@@ -132,6 +132,7 @@ def callback_detectedobjects(data):
             detected_waypoints=[]
             rospy.loginfo("Obstacle avoidance started,No valid points")
             closest_waypoint = closest_point(elkerules,current_pose.pose.position.x,current_pose.pose.position.y) 
+            #print(closest_waypoint)
             
             la = lookahead
             if waypoints_size - closest_waypoint < la:
@@ -145,12 +146,6 @@ def callback_detectedobjects(data):
                         detected_waypoints.append(i)
             near_waypoint_polygon_indexes=np.unique(near_waypoint_polygon_indexes)
             detected_waypoints=np.unique(detected_waypoints)
-
-            # for i in near_waypoint_polygon_indexes:
-            #     for j in range(len(data.markers[i].points)):
-            #         polygon_data.append([data.markers[i].points[j].x,data.markers[i].points[j].y])
-            #     polygon_list.append(polygon_data)
-
             
             midle_index=[]
             intersected_waypoints=[]
@@ -203,7 +198,7 @@ def callback_detectedobjects(data):
                     distances_for_start_point=0
                     velocities_from_avoidance=0
 
-                    for k in range(closest_waypoint,len(elkerules)-1):
+                    for k in range(closest_waypoint+1,len(elkerules)-1):
                         x1 = elkerules[k][0]
                         x2 = elkerules[k+1][0]
                         y1 = elkerules[k][1]

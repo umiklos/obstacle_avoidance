@@ -205,7 +205,7 @@ def callback_detectedobjects(data):
                     distances_for_start_point=0
                     velocities_from_avoidance=0
 
-                    for k in range(closest_waypoint,len(elkerules)-1):
+                    for k in range(closest_waypoint+1,len(elkerules)-1):
                         x1 = elkerules[k][0]
                         x2 = elkerules[k+1][0]
                         y1 = elkerules[k][1]
@@ -239,7 +239,7 @@ def callback_detectedobjects(data):
                             #vx.append((distances_for_start_point,elkerules[k][3]))
 
                     #velocity_length=distances_for_start_point + original_distances[-1]
-                    vx=elkerules[closest_waypoint:start_index,3]
+                    vx=elkerules[closest_waypoint+1:start_index,3]
                     #velocity_ls = LineString(np.column_stack((original_distances,elkerules[start_index+1:len(elkerules)-1,3])))
                     elkerules_ls = LineString(elkerules_points) 
                     n=round(elkerules_ls.length/distance_delta)
