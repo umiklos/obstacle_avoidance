@@ -234,7 +234,7 @@ def callback_detectedobjects(data):
                         v1 = elkerules[k][3]
                         v2 = elkerules[k+1][3]
                         
-                        if k > start_index:
+                        if k >= start_index:
                             actual_len_of_avoid += line_length(x1, x2, y1, y2)
                             velocities_from_avoidance += line_length(x1,x2,v1,v2)
                             velocities.append(velocities_from_avoidance)
@@ -260,14 +260,15 @@ def callback_detectedobjects(data):
                             #vx.append((distances_for_start_point,elkerules[k][3]))
 
                     #velocity_length=distances_for_start_point + original_distances[-1]
-                    vx=elkerules[closest_waypoint:start_index+1,3]
+                    vx=elkerules[closest_waypoint:start_index,3]
                     #velocity_ls = LineString(np.column_stack((original_distances,elkerules[start_index+1:len(elkerules)-1,3])))
                     elkerules_ls = LineString(elkerules_points) 
                     n=round(elkerules_ls.length/distance_delta)
                     distances = np.linspace(0,elkerules_ls.length,n)
                     distances_for_velocity = np.linspace(0,velocities[-1],n)
+                    #b=elkerules[start_index+1:len(elkerules)-1]
 
-                    new_velocities=np.interp(distances_for_velocity,original_distances,elkerules[start_index+1:len(elkerules)-1,3])
+                    new_velocities=np.interp(distances_for_velocity,original_distances,elkerules[start_index+1:,3])
 
                     #new_velocities =([velocity_ls.interpolate(distance_v) for distance_v in distances_for_velocity])
                     points = [elkerules_ls.interpolate(distance_ls) for distance_ls in distances]
