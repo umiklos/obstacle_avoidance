@@ -205,7 +205,7 @@ def callback_detectedobjects(data):
                     distances_for_start_point=0
                     velocities_from_avoidance=0
 
-                    for k in range(closest_waypoint+1,len(elkerules)-1):
+                    for k in range(closest_waypoint,len(elkerules)-1):
                         x1 = elkerules[k][0]
                         x2 = elkerules[k+1][0]
                         y1 = elkerules[k][1]
@@ -235,11 +235,11 @@ def callback_detectedobjects(data):
                             distance = 0
                             distances_for_start_point+= line_length(x1,x2,y1,y2)
                                
-                            first_part.append((x1,y1))
+                            #first_part.append((x1,y1))
                             #vx.append((distances_for_start_point,elkerules[k][3]))
-
+                    first_part=[elkerules[:start_index,0:2]]
                     #velocity_length=distances_for_start_point + original_distances[-1]
-                    vx=elkerules[closest_waypoint+1:start_index,3]
+                    vx=elkerules[:start_index,3]
                     #velocity_ls = LineString(np.column_stack((original_distances,elkerules[start_index+1:len(elkerules)-1,3])))
                     elkerules_ls = LineString(elkerules_points) 
                     n=round(elkerules_ls.length/distance_delta)
@@ -250,11 +250,13 @@ def callback_detectedobjects(data):
                     new_velocities=np.interp(distances_for_velocity,velocities,elkerules[start_index+1:,3])
 
                    
-
+                    
                     #new_velocities =([velocity_ls.interpolate(distance_v) for distance_v in distances_for_velocity])
-                    points = [elkerules_ls.interpolate(distance_ls) for distance_ls in distances]
+                    points =[elkerules_ls.interpolate(distance_ls) for distance_ls in distances]
+                    #print(len(points))
+
                     v=np.concatenate((vx,new_velocities))
-                    p1=first_part+points
+                    p1=np.vstack((first_part+points))
                     new_line = LineString(p1)
                     
                     #nw = LineString(v)

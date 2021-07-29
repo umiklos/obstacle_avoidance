@@ -223,14 +223,14 @@ def callback_detectedobjects(data):
                                 elkerules_points.append((x1 + distance * np.cos(angles[k] - np.pi / 2),y1 + distance * np.sin(angles[k] - np.pi / 2)))
                         else:
                             distance = 0                               
-                            first_part.append((x1,y1))
+                            #first_part.append((x1,y1))
 
-                   
+                    first_part=[elkerules[:start_index,0:2]]
                     elkerules_ls = LineString(elkerules_points) 
                     n=round(elkerules_ls.length/distance_delta)
                     distances = np.linspace(0,elkerules_ls.length,n)                    
                     points = [elkerules_ls.interpolate(distance_ls) for distance_ls in distances]                    
-                    p1=first_part+points
+                    p1=np.vstack((first_part+points))
                     new_line = LineString(p1)                    
                     
                     elkerules_data=np.zeros((len(new_line.coords),2))
@@ -240,8 +240,8 @@ def callback_detectedobjects(data):
                     v=np.zeros(len(elkerules_data),)
                     
                     for i,data in enumerate (elkerules_data):
-                        a=closest_point(elkerules[start_index+1:],data[0],data[1])
-                        v[i]=elkerules[a+start_index+1,3]
+                        a=closest_point(elkerules,data[0],data[1])
+                        v[i]=elkerules[a,3]
 
                     yaw = np.zeros((len(elkerules_data),))
                     for i in range(len(elkerules_data)-1):
