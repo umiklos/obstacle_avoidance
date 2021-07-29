@@ -241,7 +241,7 @@ def callback_detectedobjects(data):
                     
                     for i,data in enumerate (elkerules_data):
                         a=closest_point(elkerules[start_index+1:],data[0],data[1])
-                        v[i]=elkerules[a+start_index,3]
+                        v[i]=elkerules[a+start_index+1,3]
 
                     yaw = np.zeros((len(elkerules_data),))
                     for i in range(len(elkerules_data)-1):
