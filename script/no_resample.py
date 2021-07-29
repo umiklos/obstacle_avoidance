@@ -250,13 +250,8 @@ def callback_detectedobjects(data):
                     
                     
 
-                    yaw = np.zeros((len(elkerules_data),))
                     for i in range(len(elkerules_data)-1):
                         yaw[i] = np.arctan2((elkerules_data[i+1,1]-elkerules_data[i,1]),(elkerules_data[i+1,0]- elkerules_data[i,0]))
-                    yaw[-1]= elkerules[-1][2]
-                    
-                    elkerules_= np.column_stack((elkerules_data,yaw))
-                    elkerules = np.column_stack((elkerules_,v)) 
                     path_replanned=True
 
                     
