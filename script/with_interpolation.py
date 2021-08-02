@@ -205,7 +205,7 @@ def callback_detectedobjects(data):
                     distances_for_start_point=0
                     velocities_from_avoidance=0
 
-                    for k in range(closest_waypoint,len(elkerules)-1):
+                    for k in range(len(elkerules)-1):
                         x1 = elkerules[k][0]
                         x2 = elkerules[k+1][0]
                         y1 = elkerules[k][1]

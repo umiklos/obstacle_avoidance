@@ -34,6 +34,8 @@ midle_index_list=[]
 path_replanned=False
 count=0
 center=0
+#delete_marker=False
+
 
 def closest_point(data,x,y):
     min_distance, min_index = 10000000, 0
@@ -44,8 +46,6 @@ def closest_point(data,x,y):
         if distance < min_distance:
             min_distance, min_index = distance,i
     return min_index
-
-
     
 
 def line_orientation(x1, x2, y1, y2):
@@ -113,7 +113,7 @@ def callback_current_pose(pose):
     current_pose = pose
 
 def callback_detectedobjects(data):
-    global collect_intersected_waypoints,midle_index_list,path_replanned,elkerules,count,center
+    global collect_intersected_waypoints,midle_index_list,path_replanned,elkerules,count,center,delete_marker
     waypoints_size = len(elkerules)
     centroids=np.empty((len(data.markers),2))
     polygon_list=[]
@@ -130,6 +130,7 @@ def callback_detectedobjects(data):
 
     if current_pose is not None:
         if path_replanned==False:
+            
             near_waypoint_polygon_indexes=[]
             detected_waypoints=[]
             rospy.loginfo("Obstacle avoidance started,No valid points")
@@ -148,8 +149,6 @@ def callback_detectedobjects(data):
             near_waypoint_polygon_indexes=np.unique(near_waypoint_polygon_indexes)
             detected_waypoints=np.unique(detected_waypoints)
 
-            
-            
             midle_index=[]
             intersected_waypoints=[]
             
@@ -164,9 +163,7 @@ def callback_detectedobjects(data):
                 if (np.any(f))==True:
                     intersected_waypoints.append(i)
                
-            midle_index=(np.unique(midle_index))
-            
-            
+            midle_index=(np.unique(midle_index))            
             inter_id=np.unique(intersected_waypoints)
             collect_intersected_waypoints.extend(inter_id)
                 
@@ -183,7 +180,7 @@ def callback_detectedobjects(data):
             
 
             if valid_points.size > 1:
-                                
+                             
                 mask = np.isin(midle_index,valid_points)
                 center=midle_index[mask]    
                                                 
@@ -193,26 +190,18 @@ def callback_detectedobjects(data):
                 
                     elkerules_points=[]
                     original_distances=[]
-                    first_part=[]
-                    #vx=[]
-                    velocities=[]
-
+                    
                     actual_len_of_avoid = 0
-                    distances_for_start_point=0
-                    velocities_from_avoidance=0
+                                        
 
-                    for k in range(closest_waypoint,len(elkerules)-1):
+                    for k in range(len(elkerules)-1):
                         x1 = elkerules[k][0]
                         x2 = elkerules[k+1][0]
                         y1 = elkerules[k][1]
                         y2 = elkerules[k+1][1]
-                        v1 = elkerules[k][3]
-                        v2 = elkerules[k+1][3]
                         
                         if k > start_index:
                             actual_len_of_avoid += line_length(x1, x2, y1, y2)
-                            velocities_from_avoidance += line_length(x1,x2,v1,v2)
-                            velocities.append(velocities_from_avoidance)
                             original_distances.append(actual_len_of_avoid)
                             if actual_len_of_avoid < kiteres_hossza:
                                 distance = oldaliranyu_eltolas * (actual_len_of_avoid / kiteres_hossza)
@@ -229,41 +218,30 @@ def callback_detectedobjects(data):
                                 elkerules_points.append((x1 + distance * np.cos(angles[k] - np.pi / 2),y1 + distance * np.sin(angles[k] - np.pi / 2)))
                         else:
                             distance = 0
-                            #distances_for_start_point+= line_length(x1,x2,y1,y2)
-                               
-                            #first_part.append((x1,y1))
-                            #vx.append((distances_for_start_point,elkerules[k][3]))
-
-                    first_part=elkerules[:start_index+1,0:2]
-                    #velocity_length=distances_for_start_point + original_distances[-1]
-                    #vx=elkerules[closest_waypoint+1:start_index+1,3]
-                    elkerules_data=np.concatenate((first_part,elkerules_points))
-                    #velocity_ls = LineString(np.column_stack((original_distances,elkerules[start_index+1:len(elkerules)-1,3])))
-                    #elkerules_data.insert(elkerules[-1,0:2])
-                   
+                            elkerules_points.append((x1,y1))
+                            
+                    #elkerules_data=np.concatenate((elkerules[:start_index+1,0:2],elkerules_points))     
+                    elkerules_data=np.array(elkerules_points)              
                     elkerules_data=np.vstack((elkerules_data,elkerules[-1,0:2]))
-                    #new_velocities=np.interp(distances_for_velocity,original_distances,elkerules[start_index+1:len(elkerules)-1,3])
-
-                    #new_velocities =([velocity_ls.interpolate(distance_v) for distance_v in distances_for_velocity])
-                    #points = [elkerules_ls.interpolate(distance_ls) for distance_ls in distances]
-                    v=elkerules[:,3]#np.concatenate((vx,new_velocities))
-
-                    
-                    
+                        
                     yaw = np.zeros(len(elkerules_data),)
                     for i in range(len(elkerules_data)-1):
                         yaw[i] = np.arctan2((elkerules_data[i+1,1]-elkerules_data[i,1]),(elkerules_data[i+1,0]- elkerules_data[i,0]))
                     yaw[-1]= elkerules[-1][2]
 
                     elkerules_= np.column_stack((elkerules_data,yaw))
-                    elkerules = np.column_stack((elkerules_,v)) 
+                    elkerules = np.column_stack((elkerules_,elkerules[:,3])) 
                     path_replanned=True
+                    # if path_replanned==True:
+                    #     delete_marker=False
+                    
 
                     
 
                 elif center.size==0:
                     rospy.logwarn('no valid centerpoint')
         
+            #print(delete_marker)
         else: 
             rospy.loginfo('path replanned')
 
@@ -327,7 +305,7 @@ def pub():
                 marker_lin_vel.color.a = 1.0
                 marker_lin_vel.scale.z = 0.5
                 marker_lin_vel.id = i
-                marker_lin_vel.text = str(round(e[3],1))      #### nem jo ####
+                marker_lin_vel.text = str(round(e[3],1))     
                 ma.markers.append(marker_lin_vel)
                 #Sphere
                 marker_lane_points = vismsg.Marker()
