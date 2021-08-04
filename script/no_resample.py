@@ -9,6 +9,8 @@ import visualization_msgs.msg as vismsg
 from geometry_msgs.msg import PoseStamped,TwistStamped
 import math
 from shapely.geometry import LineString
+import time
+import std_msgs.msg as std 
 
 
 
@@ -34,6 +36,12 @@ midle_index_list=[]
 path_replanned=False
 count=0
 center=0
+debug_mark=None
+counter=None
+time0= None
+time1 = None
+time2= None
+time3= None
 #delete_marker=False
 
 
@@ -74,11 +82,15 @@ with open(rospy.get_param("waypoint_file_name")) as f:
         values = line.strip().split(',')
         x = float(values[0])
         y = float(values[1])
-        z = float(values[2])
+        #z = float(values[2])
         yaw = float(values[3])
         lin_vel = float(values[4])
         waypoint_list.append([x,y,yaw,lin_vel])
 elkerules=np.array(waypoint_list)
+#elkerules=np.column_stack((elkerules_a,np.zeros(len(elkerules_a),0)))
+counter=np.zeros((len(elkerules),))
+# elkerules=np.column_stack((elkerules,counter))
+
 
 angles=np.zeros((len(elkerules),))
 
@@ -113,11 +125,14 @@ def callback_current_pose(pose):
     current_pose = pose
 
 def callback_detectedobjects(data):
-    global collect_intersected_waypoints,midle_index_list,path_replanned,elkerules,count,center,delete_marker
+    global collect_intersected_waypoints,midle_index_list,path_replanned,elkerules,count,center,debug_marker,counter,time0,time1,time2,time3
+
     waypoints_size = len(elkerules)
     centroids=np.empty((len(data.markers),2))
     polygon_list=[]
     valid_points=np.empty(0,)
+
+    
 
     for i in range (len(data.markers)):
         centroids[i,0]=data.markers[i].pose.position.x
@@ -130,7 +145,7 @@ def callback_detectedobjects(data):
 
     if current_pose is not None:
         if path_replanned==False:
-            
+            tic=time.time()
             near_waypoint_polygon_indexes=[]
             detected_waypoints=[]
             rospy.loginfo("Obstacle avoidance started,No valid points")
@@ -148,10 +163,15 @@ def callback_detectedobjects(data):
                         detected_waypoints.append(i)
             near_waypoint_polygon_indexes=np.unique(near_waypoint_polygon_indexes)
             detected_waypoints=np.unique(detected_waypoints)
-
+            #print(len(near_waypoint_polygon_indexes))
+            toc=time.time()
+            t0=toc-tic
+            if time0 is not None: 
+                time0.publish(t0)
             midle_index=[]
             intersected_waypoints=[]
-            
+
+            tic1=time.time()
             for i in detected_waypoints:
                 f=[]
                 for k in near_waypoint_polygon_indexes:
@@ -162,7 +182,13 @@ def callback_detectedobjects(data):
                    
                 if (np.any(f))==True:
                     intersected_waypoints.append(i)
-               
+            toc1=time.time()   
+
+            t1=toc1-tic1
+            if time1 is not None: 
+                time1.publish(t1)
+
+            tic2=time.time()
             midle_index=(np.unique(midle_index))            
             inter_id=np.unique(intersected_waypoints)
             collect_intersected_waypoints.extend(inter_id)
@@ -173,12 +199,23 @@ def callback_detectedobjects(data):
                 count=0
 
             if len(collect_intersected_waypoints) > 0 :
-                counter = np.bincount(np.array(collect_intersected_waypoints)) 
+                counter = np.bincount(np.array(collect_intersected_waypoints),minlength=waypoints_size) 
+                debug_marker_publisher(counter,elkerules)
+                if counter.any >=1:
+                    rospy.loginfo(counter)
                 if count >= delete_threshold:
-                    counter=np.empty(0,)
+                    counter=np.zeros(0,)
+                
                 valid_points = np.asarray(np.where(counter > presence_threshold))
+                
+            toc2=time.time()
+            t2=toc2-tic2
+            if time2 is not None: 
+                time2.publish(t2)
             
 
+
+            #print(elkerules.shape, counter.shape)
             if valid_points.size > 1:
                              
                 mask = np.isin(midle_index,valid_points)
@@ -191,9 +228,8 @@ def callback_detectedobjects(data):
                     elkerules_points=[]
                     original_distances=[]
                     
-                    actual_len_of_avoid = 0
-                                        
-
+                    actual_len_of_avoid = 0                 
+                    tic3=time.time()
                     for k in range(len(elkerules)-1):
                         x1 = elkerules[k][0]
                         x2 = elkerules[k+1][0]
@@ -219,21 +255,22 @@ def callback_detectedobjects(data):
                         else:
                             distance = 0
                             elkerules_points.append((x1,y1))
-                            
-                    #elkerules_data=np.concatenate((elkerules[:start_index+1,0:2],elkerules_points))     
+                                 
                     elkerules_data=np.array(elkerules_points)              
                     elkerules_data=np.vstack((elkerules_data,elkerules[-1,0:2]))
-                        
+                    toc3=time.time()
+                    t3=toc3-tic3   
+                    if time3 is not None: 
+                        time3.publish(t3) 
+
                     yaw = np.zeros(len(elkerules_data),)
                     for i in range(len(elkerules_data)-1):
                         yaw[i] = np.arctan2((elkerules_data[i+1,1]-elkerules_data[i,1]),(elkerules_data[i+1,0]- elkerules_data[i,0]))
                     yaw[-1]= elkerules[-1][2]
 
                     elkerules_= np.column_stack((elkerules_data,yaw))
-                    elkerules = np.column_stack((elkerules_,elkerules[:,3])) 
+                    elkerules = np.column_stack((elkerules_,elkerules[:,3]))                    
                     path_replanned=True
-                    # if path_replanned==True:
-                    #     delete_marker=False
                     
 
                     
@@ -245,17 +282,47 @@ def callback_detectedobjects(data):
         else: 
             rospy.loginfo('path replanned')
 
-            
+def debug_marker_publisher(c,e):
+    global elkerules,debug_mark
+    rate=rospy.Rate(10)
+    for i,c in enumerate(c):
+        
+
+        debug_marker=vismsg.Marker()
+        
+        debug_marker.type = debug_marker.TEXT_VIEW_FACING
+        debug_marker.pose.position.x = e[i,0]
+        debug_marker.pose.position.y = e[i,1]
+        debug_marker.pose.position.z = 0.7
+        
+        debug_marker.header.frame_id = "map"
+        debug_marker.color.r = 1.0
+        debug_marker.color.g = 1.0
+        debug_marker.color.a = 1.0
+        debug_marker.scale.z = 0.5
+        debug_marker.id = i
+        
+        debug_marker.text = str(round(c,1)) 
+
+    
+        debug_mark.publish(debug_marker)
+    rate.sleep()
+
 
 
 def pub():
     
-    
+    global time0,time1,time2,time3,debug_mark
     rospy.init_node('points')
     rospy.Subscriber("/converted_euclidean_objects", vismsg.MarkerArray, callback_detectedobjects)
     rospy.Subscriber("/current_pose", PoseStamped,callback_current_pose)
     pub_new_data = rospy.Publisher("/global_waypoints/visualization",vismsg.MarkerArray, queue_size=1 ) 
     pub_based_waypoint_list = rospy.Publisher("/base_waypoints",Lane,queue_size=1)
+    time0 = rospy.Publisher("/eloszures", std.Float32,queue_size=1)
+    time1 = rospy.Publisher("/utkozes_vizsgalat", std.Float32,queue_size=1)
+    time2 = rospy.Publisher("/valid_point_szamitas", std.Float32,queue_size=1)
+    time3 = rospy.Publisher("/uj_trajektoria_tervezes", std.Float32,queue_size=1)
+    debug_mark=rospy.Publisher("/debug_marker",vismsg.Marker, queue_size=1 )
 
     msg_pub_lane = Lane()
     rate=rospy.Rate(10)
@@ -272,6 +339,7 @@ def pub():
         if elkerules is not None or elkerules is not []:
             i = 0
             for e in elkerules:
+                
                 i += 1
                 ori_arrow = vismsg.Marker()
                 ori_arrow.ns = "orientation"
@@ -305,6 +373,7 @@ def pub():
                 marker_lin_vel.color.a = 1.0
                 marker_lin_vel.scale.z = 0.5
                 marker_lin_vel.id = i
+               
                 marker_lin_vel.text = str(round(e[3],1))     
                 ma.markers.append(marker_lin_vel)
                 #Sphere
@@ -316,10 +385,14 @@ def pub():
                 marker_lane_points.color.r = 1.0
                 marker_lane_points.color.g = 0.0
                 marker_lane_points.color.b = 0.0
-                # if i == center:
+                if i == center:
+                    marker_lane_points.color.r=0.0
+                    marker_lane_points.color.g=1.0
+                    marker_lane_points.color.b=0.0
+                # if i in debug_points:
                 #     marker_lane_points.color.r=0.0
-                #     marker_lane_points.color.g=1.0
-                #     marker_lane_points.color.b=0.0
+                #     marker_lane_points.color.g=0.0
+                #     marker_lane_points.color.b=1.0
 
                 
                 marker_lane_points.color.a = 1.0
@@ -345,6 +418,8 @@ def pub():
                 w0.pose = pose
                 w0.twist.twist.linear.x = e[3]
                 msg_pub_lane.waypoints.append(w0)
+
+            
             #print(len(elkerules))
             pub_based_waypoint_list.publish(msg_pub_lane)
             pub_new_data.publish(ma)
