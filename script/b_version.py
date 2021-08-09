@@ -37,7 +37,7 @@ path_replanned=False
 count=0
 center=0
 debug_mark=None
-counter=None
+counter_array=None
 time0= None
 time1 = None
 time2= None
@@ -65,16 +65,7 @@ def line_length(x1, x2, y1, y2):
     return ((x1-x2)**2 + (y1-y2)**2)**0.5 
 
 
-def rotate( origin,point_x,point_y, radians):
-    x,y = point_x,point_y
-    offset_x, offset_y = origin
-    adjusted_x = (x - offset_x)
-    adjusted_y = (y - offset_y)
-    cos_rad = np.cos(radians)
-    sin_rad = np.sin(radians)
-    qx = offset_x + cos_rad * adjusted_x + sin_rad * adjusted_y
-    qy = offset_y + -sin_rad * adjusted_x + cos_rad * adjusted_y
-    return qx, qy
+
 
 waypoint_list = []
 with open(rospy.get_param("waypoint_file_name")) as f:
@@ -88,14 +79,13 @@ with open(rospy.get_param("waypoint_file_name")) as f:
         lin_vel = float(values[4])
         waypoint_list.append([x,y,yaw,lin_vel])
 elkerules=np.array(waypoint_list)
-#elkerules=np.column_stack((elkerules_a,np.zeros(len(elkerules_a),0)))
-counter=np.zeros((len(elkerules),))
-# elkerules=np.column_stack((elkerules,counter))
+counter_array=np.zeros((len(elkerules),))
+
 
 
 angles=np.zeros((len(elkerules),))
 
-car=np.zeros((len(elkerules),5,2))
+
 
 for ij in range(len(elkerules)-1):
     x1 = elkerules[ij][0]
@@ -107,33 +97,21 @@ for ij in range(len(elkerules)-1):
 angles[-1]= elkerules[-1][2]
 
 
-for i in range(len(elkerules)):
-    car[i,0,0:2] = rotate((elkerules[i][0],elkerules[i][1]),elkerules[i][0] + rear_axle_car_front_distance,elkerules[i][1] + (car_width/2),-angles[i])
-    car[i,1,0:2] = rotate((elkerules[i][0],elkerules[i][1]),elkerules[i][0] + rear_axle_car_front_distance,elkerules[i][1] - (car_width/2),-angles[i])
-    car[i,2,0:2] = rotate((elkerules[i][0],elkerules[i][1]),elkerules[i][0] - (car_length-rear_axle_car_front_distance) , elkerules[i][1] - (car_width/2),-angles[i])
-    car[i,3,0:2] = rotate((elkerules[i][0],elkerules[i][1]),elkerules[i][0] - (car_length-rear_axle_car_front_distance) , elkerules[i][1] + (car_width/2),-angles[i])
-    car[i,4,0:2] = car[i,0,0:2]
-
-def ccw(A,B,C):
-    return (C[1]-A[1]) * (B[0]-A[0]) > (B[1]-A[1]) * (C[0]-A[0])
 
 
-def intersect(A,B,C,D):
-    return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D)
 
 def callback_current_pose(pose):
     global current_pose
     current_pose = pose
 
 def callback_detectedobjects(data):
-    global collect_intersected_waypoints,midle_index_list,path_replanned,elkerules,count,center,debug_marker,counter,time0,time1,time2,time3,time4
+    global collect_intersected_waypoints,midle_index_list,path_replanned,elkerules,count,center,debug_marker,counter_array,time0,time1,time2,time3,time4
 
     waypoints_size = len(elkerules)
     centroids=np.empty((len(data.markers),2))
     polygon_list=[]
     valid_points=np.empty(0,)
 
-    
 
     for i in range (len(data.markers)):
         centroids[i,0]=data.markers[i].pose.position.x
@@ -146,8 +124,7 @@ def callback_detectedobjects(data):
 
     if current_pose is not None:
         if path_replanned==False:
-            
-            
+            tic=time.time()
             rospy.loginfo("Obstacle avoidance started,No valid points")
             closest_waypoint = closest_point(elkerules,current_pose.pose.position.x,current_pose.pose.position.y) 
             
@@ -167,12 +144,20 @@ def callback_detectedobjects(data):
             if min_dist < 1.5:
                 collect_intersected_waypoints.append(min_index)
 
+            toc=time.time()
+            t0=toc-tic
+
+            if time0 is not None: 
+                time0.publish(t0)
+
             if len(collect_intersected_waypoints) > 0 :
-                counter = np.bincount(np.array(collect_intersected_waypoints),minlength=waypoints_size) 
-                valid_point = np.asarray(np.where(counter > presence_threshold))
+               
+                counter_array = np.bincount(np.array(collect_intersected_waypoints),minlength=waypoints_size) 
+                valid_point = np.asarray(np.where(counter_array > presence_threshold))
+                
 
                 if valid_point.size > 0:
-                    
+                    tic1=time.time()
                     szakasz_yaw = angles[valid_point[0]]
                     start_index = closest_point(elkerules,elkerules[valid_point[0]][0][0] + (kiteres_hossza  + elkerules_hossza) * np.cos(szakasz_yaw + np.pi),elkerules[valid_point[0]][0][1] + (elkerules_hossza +kiteres_hossza) * np.sin(szakasz_yaw + np.pi))
 
@@ -215,6 +200,11 @@ def callback_detectedobjects(data):
                     elkerules_= np.column_stack((elkerules_data,yaw))
                     elkerules = np.column_stack((elkerules_,elkerules[:,3]))                    
                     path_replanned=True
+                    toc1=time.time()
+                    t1=toc1-tic1
+                    if time1 is not None: 
+                        time1.publish(t1)
+            
         else:
             rospy.loginfo('path replanned')
 
@@ -225,17 +215,17 @@ def callback_detectedobjects(data):
 
 def pub():
     
-    global time0,time1,time2,time3,time4
+    global time0,time1 #,time2,time3,time4
     rospy.init_node('points')
     rospy.Subscriber("/converted_euclidean_objects", vismsg.MarkerArray, callback_detectedobjects)
     rospy.Subscriber("/current_pose", PoseStamped,callback_current_pose)
     pub_new_data = rospy.Publisher("/global_waypoints/visualization",vismsg.MarkerArray, queue_size=1 ) 
     pub_based_waypoint_list = rospy.Publisher("/base_waypoints",Lane,queue_size=1)
-    time0 = rospy.Publisher("/eloszures", std.Float32,queue_size=1)
-    time1 = rospy.Publisher("/utkozes_vizsgalat", std.Float32,queue_size=1)
-    time2 = rospy.Publisher("/valid_point_szamitas", std.Float32,queue_size=1)
-    time3 = rospy.Publisher("/uj_trajektoria_tervezes", std.Float32,queue_size=1)
-    time4 = rospy.Publisher("/extend", std.Float32,queue_size=1)
+    time0 = rospy.Publisher("/akadaly_kereses", std.Float32,queue_size=1)
+    time1 = rospy.Publisher("/uj_trajektoria_tervezes", std.Float32,queue_size=1)
+    # time2 = rospy.Publisher("/valid_point_szamitas", std.Float32,queue_size=1)
+    # time3 = rospy.Publisher("/uj_trajektoria_tervezes", std.Float32,queue_size=1)
+    # time4 = rospy.Publisher("/extend", std.Float32,queue_size=1)
 
     msg_pub_lane = Lane()
     msg_pub_lane.header.frame_id="map"
