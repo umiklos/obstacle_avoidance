@@ -8,9 +8,10 @@ from autoware_msgs.msg import Lane, Waypoint
 import visualization_msgs.msg as vismsg
 from geometry_msgs.msg import PoseStamped,TwistStamped
 import math
-from shapely.geometry import LineString
+#from shapely.geometry import LineString
 import time
 import std_msgs.msg as std 
+from jsk_rviz_plugins.msg import OverlayText
 
 
 
@@ -36,8 +37,9 @@ midle_index_list=[]
 path_replanned=False
 count=0
 center=0
-debug_mark=None
+
 counter_array=None
+
 time0= None
 time1 = None
 time2= None
@@ -82,9 +84,7 @@ elkerules=np.array(waypoint_list)
 counter_array=np.zeros((len(elkerules),))
 
 
-
 angles=np.zeros((len(elkerules),))
-
 
 
 for ij in range(len(elkerules)-1):
@@ -98,19 +98,36 @@ angles[-1]= elkerules[-1][2]
 
 
 
-
-
 def callback_current_pose(pose):
     global current_pose
     current_pose = pose
 
 def callback_detectedobjects(data):
-    global collect_intersected_waypoints,midle_index_list,path_replanned,elkerules,count,center,debug_marker,counter_array,time0,time1,time2,time3,time4
+    global collect_intersected_waypoints,midle_index_list,path_replanned,elkerules,count,center,counter_array,time0,time1,time2,time3,time4
 
     waypoints_size = len(elkerules)
     centroids=np.empty((len(data.markers),2))
     polygon_list=[]
-    valid_points=np.empty(0,)
+    
+
+    text=OverlayText()
+    text.height=10
+    text.width=10
+    text.left=10
+    text.top=0
+    text.text_size=1.0
+    text.fg_color.r=text.fg_color.b=text.fg_color.g=0.0
+    text.fg_color.a=1.0
+
+    if path_replanned==True:
+        text.text="Obstacle detected, Path replanned"
+    else:
+        text.text="Obstacle avoidance started"
+
+    if text_pub is not None:
+        text_pub.publish(text)
+
+
 
 
     for i in range (len(data.markers)):
@@ -215,12 +232,13 @@ def callback_detectedobjects(data):
 
 def pub():
     
-    global time0,time1 #,time2,time3,time4
+    global time0,time1,text_pub #,time2,time3,time4
     rospy.init_node('points')
     rospy.Subscriber("/converted_euclidean_objects", vismsg.MarkerArray, callback_detectedobjects)
     rospy.Subscriber("/current_pose", PoseStamped,callback_current_pose)
     pub_new_data = rospy.Publisher("/global_waypoints/visualization",vismsg.MarkerArray, queue_size=1 ) 
     pub_based_waypoint_list = rospy.Publisher("/base_waypoints",Lane,queue_size=1)
+    text_pub = rospy.Publisher("/text_overlay",OverlayText, queue_size=1)
     time0 = rospy.Publisher("/akadaly_kereses", std.Float32,queue_size=1)
     time1 = rospy.Publisher("/uj_trajektoria_tervezes", std.Float32,queue_size=1)
     # time2 = rospy.Publisher("/valid_point_szamitas", std.Float32,queue_size=1)
