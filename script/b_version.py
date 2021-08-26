@@ -37,6 +37,9 @@ midle_index_list=[]
 path_replanned=False
 count=0
 center=0
+uj_szakasz_index_array=[]
+original_szakasz = None
+
 
 counter_array=None
 
@@ -81,6 +84,7 @@ with open(rospy.get_param("waypoint_file_name")) as f:
         lin_vel = float(values[4])
         waypoint_list.append([x,y,yaw,lin_vel])
 elkerules=np.array(waypoint_list)
+waypoint_list=np.array(waypoint_list)
 counter_array=np.zeros((len(elkerules),))
 
 
@@ -103,7 +107,7 @@ def callback_current_pose(pose):
     current_pose = pose
 
 def callback_detectedobjects(data):
-    global collect_intersected_waypoints,midle_index_list,path_replanned,elkerules,count,center,counter_array,time0,time1,time2,time3,time4
+    global collect_intersected_waypoints,midle_index_list,path_replanned,elkerules,count,center,counter_array,time0,time1,time2,time3,time4,uj_szakasz_index_array,original_szakasz
 
     waypoints_size = len(elkerules)
     centroids=np.empty((len(data.markers),2))
@@ -142,7 +146,7 @@ def callback_detectedobjects(data):
     if current_pose is not None:
         if path_replanned==False:
             tic=time.time()
-            rospy.loginfo("Obstacle avoidance started,No valid points")
+            #rospy.loginfo("Obstacle avoidance started,No valid points")
             closest_waypoint = closest_point(elkerules,current_pose.pose.position.x,current_pose.pose.position.y) 
             
             la = lookahead
@@ -177,6 +181,14 @@ def callback_detectedobjects(data):
                     tic1=time.time()
                     szakasz_yaw = angles[valid_point[0]]
                     start_index = closest_point(elkerules,elkerules[valid_point[0]][0][0] + (kiteres_hossza  + elkerules_hossza) * np.cos(szakasz_yaw + np.pi),elkerules[valid_point[0]][0][1] + (elkerules_hossza +kiteres_hossza) * np.sin(szakasz_yaw + np.pi))
+                    end_index = closest_point(elkerules,elkerules[valid_point[0]][0][0] + (visszateres_hossza) * np.cos(szakasz_yaw),elkerules[valid_point[0]][0][1] + (visszateres_hossza) * np.sin(szakasz_yaw))
+
+                    uj_szakasz_index_array=np.arange(start_index+1,end_index+1,1)
+
+                    #original_szakasz = waypoint_list[start_index:end_index+1,0:2]
+                    original_szakasz= np.column_stack((waypoint_list[start_index:end_index+1,0:2],angles[start_index:end_index+1]))
+
+                    #print((original_szakasz.shape))
 
                     elkerules_points=np.zeros((len(elkerules)-1,2))               
                     actual_len_of_avoid = 0                 
@@ -222,8 +234,8 @@ def callback_detectedobjects(data):
                     if time1 is not None: 
                         time1.publish(t1)
             
-        else:
-            rospy.loginfo('path replanned')
+        # else:
+        #     rospy.loginfo('path replanned')
 
                 
     
@@ -237,8 +249,10 @@ def pub():
     rospy.Subscriber("/converted_euclidean_objects", vismsg.MarkerArray, callback_detectedobjects)
     rospy.Subscriber("/current_pose", PoseStamped,callback_current_pose)
     pub_new_data = rospy.Publisher("/global_waypoints/visualization",vismsg.MarkerArray, queue_size=1 ) 
+    pub_org_szakasz = rospy.Publisher("/org",vismsg.MarkerArray, queue_size=1 )
     pub_based_waypoint_list = rospy.Publisher("/base_waypoints",Lane,queue_size=1)
     text_pub = rospy.Publisher("/text_overlay",OverlayText, queue_size=1)
+
     time0 = rospy.Publisher("/akadaly_kereses", std.Float32,queue_size=1)
     time1 = rospy.Publisher("/uj_trajektoria_tervezes", std.Float32,queue_size=1)
     # time2 = rospy.Publisher("/valid_point_szamitas", std.Float32,queue_size=1)
@@ -249,6 +263,7 @@ def pub():
     msg_pub_lane.header.frame_id="map"
     rate=rospy.Rate(10)
     ma = vismsg.MarkerArray()
+    org_ma = vismsg.MarkerArray()
 
 
     
@@ -256,7 +271,9 @@ def pub():
         
         rate.sleep()
         ma.markers = []
+        org_ma.markers = []
         msg_pub_lane.waypoints = []
+        
         
         if elkerules is not None or elkerules is not []:
             i = 0
@@ -307,11 +324,11 @@ def pub():
                 marker_lane_points.color.r = 1.0
                 marker_lane_points.color.g = 0.0
                 marker_lane_points.color.b = 0.0
-                # try:
-                #     if i == 81 :
-                #         marker_lane_points.color.r=0.0
-                #         marker_lane_points.color.g=1.0
-                #         marker_lane_points.color.b=0.0
+                
+                if i in uj_szakasz_index_array:
+                    marker_lane_points.color.r=0.0
+                    marker_lane_points.color.g=1.0
+                    marker_lane_points.color.b=0.0
                 # except: 
                 #     None
                 # if i in debug_points:
@@ -349,6 +366,54 @@ def pub():
             pub_based_waypoint_list.publish(msg_pub_lane)
             pub_new_data.publish(ma)
         
+        if original_szakasz is not None:
+            i=0
+            for e in original_szakasz:
+                i+=1
+                ori2_arrow = vismsg.Marker()
+                ori2_arrow.ns = "orientation"
+                ori2_arrow.header.frame_id = "map"
+                ori2_arrow.type = ori2_arrow.ARROW
+                ori2_arrow.pose.position.x = e[0]
+                ori2_arrow.pose.position.y = e[1]
+                ori2_arrow.pose.position.z = -1.36
+                ori2_arrow.pose.orientation.z = math.sin(e[2]/2.0)
+                ori2_arrow.pose.orientation.w = math.cos(e[2]/2.0)
+                ori2_arrow.action = ori_arrow.ADD
+                ori2_arrow.color.r = 0.2
+                ori2_arrow.color.g = 1.0
+                ori2_arrow.color.b = 0.6
+                ori2_arrow.color.a = 1.0
+                ori2_arrow.scale.x = 1.0
+                ori2_arrow.scale.y = 0.1
+                ori2_arrow.id = i                
+                org_ma.markers.append(ori2_arrow)
+                #Velocity
+                
+                
+
+                marker_lane_points2 = vismsg.Marker()
+                marker_lane_points2.header.frame_id = "map"
+                marker_lane_points2.ns = "lane_points"
+                marker_lane_points2.type = marker_lane_points2.SPHERE
+                #sphere_color = self.gradient(lin_vel, 10) # max speed color (red) is 10
+                marker_lane_points2.color.r = 1.0
+                marker_lane_points2.color.g = 0.0
+                marker_lane_points2.color.b = 0.0
+                                
+                marker_lane_points2.color.a = 1.0
+                marker_lane_points2.scale.x = 0.4
+                marker_lane_points2.scale.y = 0.4
+                marker_lane_points2.scale.z = 0.4
+                marker_lane_points2.pose.position.x = e[0]
+                marker_lane_points2.pose.position.y = e[1]
+                marker_lane_points2.pose.position.z = -1.36
+                marker_lane_points2.pose.orientation.w = 1.0
+                marker_lane_points2.id = i 
+                org_ma.markers.append(marker_lane_points2)
+
+            pub_org_szakasz.publish(org_ma)
+
 
 
     #rospy.spin()
