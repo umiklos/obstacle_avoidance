@@ -39,6 +39,8 @@ count=0
 center=0
 uj_szakasz_index_array=[]
 original_szakasz = None
+detected_object = None
+
 
 
 counter_array=None
@@ -107,7 +109,7 @@ def callback_current_pose(pose):
     current_pose = pose
 
 def callback_detectedobjects(data):
-    global collect_intersected_waypoints,midle_index_list,path_replanned,elkerules,count,center,counter_array,time0,time1,time2,time3,time4,uj_szakasz_index_array,original_szakasz
+    global collect_intersected_waypoints,midle_index_list,path_replanned,elkerules,count,center,counter_array,time0,time1,time2,time3,time4,uj_szakasz_index_array,original_szakasz,detected_object
 
     waypoints_size = len(elkerules)
     centroids=np.empty((len(data.markers),2))
@@ -155,6 +157,7 @@ def callback_detectedobjects(data):
 
             min_dist=10000
             min_index=0
+            min_j_index=0
 
             for i in range(closest_waypoint,closest_waypoint+la):
                 for j in range(len(centroids)):
@@ -162,11 +165,15 @@ def callback_detectedobjects(data):
                     if dist < min_dist:
                         min_dist=dist
                         min_index=i
+                        min_j_index=j
             if min_dist < 1.5:
                 collect_intersected_waypoints.append(min_index)
+                
 
             toc=time.time()
             t0=toc-tic
+
+            
 
             if time0 is not None: 
                 time0.publish(t0)
@@ -178,6 +185,8 @@ def callback_detectedobjects(data):
                 
 
                 if valid_point.size > 0:
+                    detected_object=(centroids[min_j_index,0],centroids[min_j_index,1])
+                    
                     tic1=time.time()
                     szakasz_yaw = angles[valid_point[0]]
                     start_index = closest_point(elkerules,elkerules[valid_point[0]][0][0] + (kiteres_hossza  + elkerules_hossza) * np.cos(szakasz_yaw + np.pi),elkerules[valid_point[0]][0][1] + (elkerules_hossza +kiteres_hossza) * np.sin(szakasz_yaw + np.pi))
@@ -185,10 +194,7 @@ def callback_detectedobjects(data):
 
                     uj_szakasz_index_array=np.arange(start_index+1,end_index+1,1)
 
-                    #original_szakasz = waypoint_list[start_index:end_index+1,0:2]
                     original_szakasz= np.column_stack((waypoint_list[start_index:end_index+1,0:2],angles[start_index:end_index+1]))
-
-                    #print((original_szakasz.shape))
 
                     elkerules_points=np.zeros((len(elkerules)-1,2))               
                     actual_len_of_avoid = 0                 
@@ -252,6 +258,7 @@ def pub():
     pub_org_szakasz = rospy.Publisher("/org",vismsg.MarkerArray, queue_size=1 )
     pub_based_waypoint_list = rospy.Publisher("/base_waypoints",Lane,queue_size=1)
     text_pub = rospy.Publisher("/text_overlay",OverlayText, queue_size=1)
+    pub_det = rospy.Publisher("/detected_object_centroid",vismsg.MarkerArray, queue_size=1 )
 
     time0 = rospy.Publisher("/akadaly_kereses", std.Float32,queue_size=1)
     time1 = rospy.Publisher("/uj_trajektoria_tervezes", std.Float32,queue_size=1)
@@ -264,6 +271,7 @@ def pub():
     rate=rospy.Rate(10)
     ma = vismsg.MarkerArray()
     org_ma = vismsg.MarkerArray()
+    det_ma = vismsg.MarkerArray()
 
 
     
@@ -273,8 +281,8 @@ def pub():
         ma.markers = []
         org_ma.markers = []
         msg_pub_lane.waypoints = []
-        
-        
+        det_ma.markers = []
+            
         if elkerules is not None or elkerules is not []:
             i = 0
             for e in elkerules:
@@ -329,13 +337,7 @@ def pub():
                     marker_lane_points.color.r=0.0
                     marker_lane_points.color.g=1.0
                     marker_lane_points.color.b=0.0
-                # except: 
-                #     None
-                # if i in debug_points:
-                #     marker_lane_points.color.r=0.0
-                #     marker_lane_points.color.g=0.0
-                #     marker_lane_points.color.b=1.0
-
+                
                 
                 marker_lane_points.color.a = 1.0
                 marker_lane_points.scale.x = 0.4
@@ -361,8 +363,6 @@ def pub():
                 w0.twist.twist.linear.x = e[3]
                 msg_pub_lane.waypoints.append(w0)
 
-            
-            #print(len(elkerules))
             pub_based_waypoint_list.publish(msg_pub_lane)
             pub_new_data.publish(ma)
         
@@ -413,6 +413,43 @@ def pub():
                 org_ma.markers.append(marker_lane_points2)
 
             pub_org_szakasz.publish(org_ma)
+
+        if detected_object is not None:
+            marker_lane_points3 = vismsg.Marker()
+            marker_lane_points3.header.frame_id = "map"
+            marker_lane_points3.ns = "lane_points"
+            marker_lane_points3.type = marker_lane_points3.SPHERE
+            
+            marker_lane_points3.color.r = 1.0
+            marker_lane_points3.color.g = 0.0
+            marker_lane_points3.color.b = 0.0
+                            
+            marker_lane_points3.color.a = 1.0
+            marker_lane_points3.scale.x = 1.0
+            marker_lane_points3.scale.y = 1.0
+            marker_lane_points3.scale.z = 1.0
+            marker_lane_points3.pose.position.x = detected_object[0]
+            marker_lane_points3.pose.position.y = detected_object[1]
+            marker_lane_points3.pose.position.z = -1.36
+            marker_lane_points3.pose.orientation.w = 1.0
+            det_ma.markers.append(marker_lane_points3)
+
+            marker_lin_vel3 = vismsg.Marker()
+            marker_lin_vel3.type = marker_lin_vel3.TEXT_VIEW_FACING
+            marker_lin_vel3.pose.position.x = detected_object[0]
+            marker_lin_vel3.pose.position.y = detected_object[1]
+            marker_lin_vel3.pose.position.z = 0.7
+            marker_lin_vel3.ns = "linvel"
+            marker_lin_vel3.header.frame_id = "map"
+            marker_lin_vel3.color.r = 0.0
+            marker_lin_vel3.color.g = 0.0
+            marker_lin_vel3.color.b = 0.0
+            marker_lin_vel3.color.a = 1.0
+            marker_lin_vel3.scale.z = 1.0
+            
+            marker_lin_vel3.text = "detected object"     
+            det_ma.markers.append(marker_lin_vel3)
+            pub_det.publish(det_ma)
 
 
 
