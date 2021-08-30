@@ -4,6 +4,11 @@
 <include file="$(find nissan_bringup)/launch/parking_challange.launch" />
 <node pkg="object_transform" type="object_transform" name="object_transform"/>
 <node pkg="obstacle_avoidance" type="obstacle_avoidance" name="obstacle_avoidance_params"/>
-<!--<node pkg="obstacle_avoidance" type="obstacle_avoid.py" name="obstacle_avoid"/-->
+<param name = "obstacle_avoidance_params/kiteres_hossza" value="15.0"/>
+<param name = "obstacle_avoidance_params/oldaliranyu_eltolas" value="2.2"/>
+<param name = "obstacle_avoidance_params/visszateres_hossza" value="10.0"/>
+<param name = "waypoint_file_name" value="/home/miki/bags/zala_demo_nova1.csv"/>
+
+<<node pkg="obstacle_avoidance" type="b_version.py" name="obstacle_avoid"/>
 <!--node pkg="obstacle_avoidance" type="obstacle_avoid_trapez_v2.py" name="obstacle_avoid_trapez"/-->
 </launch>
