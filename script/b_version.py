@@ -14,12 +14,6 @@ import std_msgs.msg as std
 from jsk_rviz_plugins.msg import OverlayText
 
 
-
-params=rospy.get_param(rospy.get_param("car_name"))
-car_width = params['car_width']
-rear_axle_car_front_distance = params['rear_axle_car_front_distance']
-car_length = params['car_length']
-
 kiteres_iranya = rospy.get_param('/obstacle_avoidance_params/kiteres_iranya')
 kiteres_hossza = rospy.get_param('/obstacle_avoidance_params/kiteres_hossza')
 oldaliranyu_eltolas = rospy.get_param('/obstacle_avoidance_params/oldaliranyu_eltolas')
