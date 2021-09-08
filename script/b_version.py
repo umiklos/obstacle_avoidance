@@ -116,12 +116,16 @@ def callback_detectedobjects(data):
     text.left=10
     text.top=0
     text.text_size=1.0
-    text.fg_color.r=text.fg_color.b=text.fg_color.g=0.0
+    #text.fg_color.r=text.fg_color.b=text.fg_color.g=0.0
     text.fg_color.a=1.0
 
     if path_replanned==True:
+        text.fg_color.r=text.fg_color.b=0.0
+        text.fg_color.g=1.0
         text.text="Obstacle detected, Path replanned"
     else:
+        text.fg_color.b=text.fg_color.g=0.0
+        text.fg_color.r=1.0
         text.text="Obstacle avoidance started"
 
     if text_pub is not None:
@@ -334,9 +338,9 @@ def pub():
                 
                 
                 marker_lane_points.color.a = 1.0
-                marker_lane_points.scale.x = 0.4
-                marker_lane_points.scale.y = 0.4
-                marker_lane_points.scale.z = 0.4
+                marker_lane_points.scale.x = 1.0
+                marker_lane_points.scale.y = 1.0
+                marker_lane_points.scale.z = 1.0
                 marker_lane_points.pose.position.x = e[0]
                 marker_lane_points.pose.position.y = e[1]
                 marker_lane_points.pose.position.z = -1.36
@@ -396,9 +400,9 @@ def pub():
                 marker_lane_points2.color.b = 0.0
                                 
                 marker_lane_points2.color.a = 1.0
-                marker_lane_points2.scale.x = 0.4
-                marker_lane_points2.scale.y = 0.4
-                marker_lane_points2.scale.z = 0.4
+                marker_lane_points2.scale.x = 1.0
+                marker_lane_points2.scale.y = 1.0
+                marker_lane_points2.scale.z = 1.0
                 marker_lane_points2.pose.position.x = e[0]
                 marker_lane_points2.pose.position.y = e[1]
                 marker_lane_points2.pose.position.z = -1.36
@@ -415,15 +419,15 @@ def pub():
             marker_lane_points3.type = marker_lane_points3.SPHERE
             
             marker_lane_points3.color.r = 1.0
-            marker_lane_points3.color.g = 0.0
+            marker_lane_points3.color.g = 1.0
             marker_lane_points3.color.b = 0.0
                             
             marker_lane_points3.color.a = 1.0
-            marker_lane_points3.scale.x = 1.0
-            marker_lane_points3.scale.y = 1.0
-            marker_lane_points3.scale.z = 1.0
+            marker_lane_points3.scale.x = 1.5
+            marker_lane_points3.scale.y = 1.5
+            marker_lane_points3.scale.z = 1.5
             marker_lane_points3.pose.position.x = detected_object[0]
-            marker_lane_points3.pose.position.y = detected_object[1]
+            marker_lane_points3.pose.position.y = detected_object[1] 
             marker_lane_points3.pose.position.z = -1.36
             marker_lane_points3.pose.orientation.w = 1.0
             det_ma.markers.append(marker_lane_points3)
@@ -431,7 +435,7 @@ def pub():
             marker_lin_vel3 = vismsg.Marker()
             marker_lin_vel3.type = marker_lin_vel3.TEXT_VIEW_FACING
             marker_lin_vel3.pose.position.x = detected_object[0]
-            marker_lin_vel3.pose.position.y = detected_object[1]
+            marker_lin_vel3.pose.position.y = detected_object[1] + 3
             marker_lin_vel3.pose.position.z = 0.7
             marker_lin_vel3.ns = "linvel"
             marker_lin_vel3.header.frame_id = "map"
@@ -439,7 +443,7 @@ def pub():
             marker_lin_vel3.color.g = 0.0
             marker_lin_vel3.color.b = 0.0
             marker_lin_vel3.color.a = 1.0
-            marker_lin_vel3.scale.z = 1.0
+            marker_lin_vel3.scale.z = 3.5
             
             marker_lin_vel3.text = "detected object"     
             det_ma.markers.append(marker_lin_vel3)
