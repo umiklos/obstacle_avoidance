@@ -42,11 +42,11 @@ class PlotHandler(object):
         self.win.setCentralWidget(area)
         dock1def = darea.Dock("Default", size = (1,1))  # give this dock minimum possible size
         dock2oth = darea.Dock("Control", size = (1,1))  # give this dock minimum possible size
-        dock3ctr = darea.Dock("Control", size = (1,1))  # give this dock minimum possible size
+        dock3ctr = darea.Dock("Results", size = (1,1))  # give this dock minimum possible size
         dock4gps = darea.Dock("2 Gps visualization", size = (500,400)) # size is only a suggestion
         area.addDock(dock1def, "left")
         area.addDock(dock2oth, "bottom", dock1def)
-        #area.addDock(dock3ctr, "above", dock2oth)
+        area.addDock(dock3ctr, "bottom", dock2oth)
         #area.addDock(dock4gps, "bottom", dock3ctr)
         dhLabel = qtgqt.QtGui.QLabel("Duro:"); dhLabel.setStyleSheet("background-color: rgb(4, 4, 4);"); dhLabel.setAlignment(pg.QtCore.Qt.AlignRight); dhLabel.setFixedSize(50, 25)
         dsLabel = qtgqt.QtGui.QLabel("Duro:"); dsLabel.setStyleSheet("background-color: rgb(4, 4, 4);"); dsLabel.setAlignment(pg.QtCore.Qt.AlignRight); dsLabel.setFixedSize(50, 25)
@@ -65,7 +65,8 @@ class PlotHandler(object):
         self.ctrl_cmd_speedLabel = qtgqt.QtGui.QLabel(" **.* Km/h")
         self.isAutonomLabel = qtgqt.QtGui.QLabel("-")
         self.ctrl_cmd_steering_angle = qtgqt.QtGui.QLabel(" **.* rad")
-        
+        self.textLabel = qtgqt.QtGui.QLabel("-")
+        self.waypointLabel = qtgqt.QtGui.QLabel("-")
 
         self.SensorsLaunched = False
         self.avoidanceLaunched = False
@@ -95,7 +96,9 @@ class PlotHandler(object):
         self.eukDet = qtgqt.QtGui.QLabel(" **")
         self.eukDet.setStyleSheet("font-family: Monospace; font: 20pt; color: rgb(200, 66, 66)")
         self.baseWay = qtgqt.QtGui.QLabel(" **")
-        self.baseWay.setStyleSheet("font-family: Monospace; font: 20pt; color: rgb(200, 66, 66)")      
+        self.baseWay.setStyleSheet("font-family: Monospace; font: 20pt; color: rgb(200, 66, 66)")
+        self.textLabel.setStyleSheet("font-family: Monospace; font: 20pt; color: rgb(200, 200, 200)") 
+        self.waypointLabel.setStyleSheet("font-family: Monospace; font: 10pt; color: rgb(200, 200, 200)")      
         # default
         widg1def.addWidget(dsLabel, row=2, col=3)
         widg1def.addWidget(nsLabel, row=2, col=1)
@@ -118,25 +121,7 @@ class PlotHandler(object):
         widg1def.addWidget(self.currentPoseLabel, row=2, col=6)
         widg1def.addWidget(self.eukDet, row=3, col=2)
         widg1def.addWidget(self.baseWay, row=3, col=4)
-        # self.zedOkLabel = qtgqt.QtGui.QLabel("**")
-        # self.zedOkLabel.setStyleSheet("font-family: Monospace; font: 20pt; color: rgb(123, 64, 133)")
-        #zhLabel = qtgqt.QtGui.QLabel("Zed:"); zhLabel.setStyleSheet("background-color: rgb(4, 4, 4);"); zhLabel.setAlignment(pg.QtCore.Qt.AlignRight); zhLabel.setFixedSize(50, 25)
-        # widg1def.addWidget(zhLabel, row=3, col=6)
-        # widg1def.addWidget(self.zedOkLabel, row=3, col=7)
-
-        self.state = None
-        self.widgGps = pg.PlotWidget(title="Gps difference")
-        self.widgGps.setAspectLocked(True)
-        self.pltGpsOdom = pg.ScatterPlotItem(size = 10, pen = pg.mkPen(None), brush = blueB)
-        self.pltDuroOrientation = pg.PlotCurveItem(pen=pg.mkPen(qtgqt.QtGui.QColor(244, 166, 58), width=6))
-        self.pltNovaOrientation = pg.PlotCurveItem(pen=pg.mkPen(qtgqt.QtGui.QColor(200, 66, 66), width=8))
-        self.pltLeafOdom = pg.ScatterPlotItem(size = 10, pen = pg.mkPen(None), brush = redB)
-        self.widgGps.showGrid(x=True, y=True)
-        self.widgGps.addItem(self.pltGpsOdom)
-        self.widgGps.addItem(self.pltNovaOrientation)
-        self.widgGps.addItem(self.pltDuroOrientation)
-        self.widgGps.addItem(self.pltLeafOdom)
-        dock4gps.addWidget(self.widgGps)
+        
         self.pauseSensorReadClickedBtn.clicked.connect(self.pauseSensorReadClicked)
         
 
@@ -144,8 +129,6 @@ class PlotHandler(object):
         self.avoidanceLaunchBtn.clicked.connect(self.avoidanceClicked)
         self.novaSensorLaunchBtn.clicked.connect(self.novaSensorClicked)
         self.duroSensorLaunchBtn.clicked.connect(self.duroSensorClicked)
-
-
         
         
         self.tGps = pg.TextItem(text = "Gps", color = blue)
@@ -154,7 +137,7 @@ class PlotHandler(object):
 
         
         dock2oth.setStyleSheet("background-color: rgb(18, 20, 23);")
-        self.drawCircle(self.widgGps)
+        
         # other controls
         widg2oth = pg.LayoutWidget()
         dock2oth.setStyleSheet("background-color: rgb(18, 20, 23);")
@@ -166,16 +149,28 @@ class PlotHandler(object):
         widg2oth.addWidget(self.avoidanceLaunchBtn, row = 3, col = 1)
         widg2oth.addWidget(self.novaSensorLaunchBtn, row = 2, col = 1)
         widg2oth.addWidget(self.duroSensorLaunchBtn, row = 2, col = 2)
+        widg2oth.addWidget(self.waypointLabel,row = 1, col = 2)
 
         
 
         dock2oth.addWidget(widg2oth)
+
+        widg3res = pg.LayoutWidget()
+        dock3ctr.setStyleSheet("background-color: rgb(18, 20, 23);")
+        widg3res.setStyleSheet("background-color: rgb(40, 44, 52); color: rgb(171, 178, 191);")
+        widg3res.addWidget(self.textLabel,row = 1, col = 1)
+
+        dock3ctr.addWidget(widg3res)
 
      
         self.pauseSensorReadClicked() # start paused - the same effect as pushed the pause button
         self.win.show()
 
     def updatePose(self):
+        #print(self.leaf.text)
+        #item=pg.TextItem(text='{}'.format(self.leaf.text))
+        self.textLabel.setText('{}'.format(str(self.leaf.text)))
+        self.waypointLabel.setText(rospy.get_param('waypoint_file_name'))
         if self.leaf.stop_slow == False:
             self.duroRtkLabel.setText(self.leaf.duro_rtk)
             self.novaRtkLabel.setText(self.leaf.nova_rtk)
@@ -188,13 +183,13 @@ class PlotHandler(object):
             self.ousterRigLabel.setText(self.leaf.ouster_rig_ok)
             self.currentPoseLabel.setText(self.leaf.current_pose_ok)
             self.ctrl_cmdOkLabel.setText(self.leaf.ctrl_cmd_ok)
-            self.textLabel.setText(self.leaf.text)
+    
             #self.zedOkLabel.setText(self.leaf.zed_ok)
             
             self.eukDet.setText(self.leaf.detection_ok)
             self.baseWay.setText(self.leaf.base_way_ok)
             #self.veloRig.setText(self.leaf.base_way_ok)
-            self.pltGpsOdom.setPoints(self.leaf.pose_diff.x, self.leaf.pose_diff.y)
+            #self.pltGpsOdom.setPoints(self.leaf.pose_diff.x, self.leaf.pose_diff.y)
             
     def SensorClicked(self): 
         if self.SensorsLaunched is False:
@@ -375,6 +370,8 @@ class LeafSubscriber(object):
         else:
             self.iterator += 1
 
+     
+
     def registerPose(self):
         self.stop_slow = False
         # self.p2 = rospy.Subscriber("/gps/duro/current_pose", geomsg.PoseStamped, self.duroPoseCallBack)
@@ -425,6 +422,7 @@ class LeafSubscriber(object):
 
     def textCallback(self, msg):
         self.text = msg.text
+        
 
     def handleRegistering(self):      
         if self.sub_pos != self.sub_pos_pre: # if subscribe / unsubscribe
