@@ -5,9 +5,12 @@
 <node pkg="object_transform" type="object_transform" name="object_transform"/>
 <node pkg="obstacle_avoidance" type="obstacle_avoidance" name="obstacle_avoidance_params"/>
 <param name = "obstacle_avoidance_params/kiteres_hossza" value="15.0"/>
-<param name = "obstacle_avoidance_params/oldaliranyu_eltolas" value="2.2"/>
-<param name = "obstacle_avoidance_params/visszateres_hossza" value="10.0"/>
-<param name = "waypoint_file_name" value="/mnt/storage_1tb/waypoint/zala_demo_nova1.csv"/>
+<param name = "obstacle_avoidance_params/oldaliranyu_eltolas" value="2.6"/>
+<param name = "obstacle_avoidance_params/visszateres_hossza" value="15.0"/>
+<param name = "obstacle_avoidance_params/elkerules_hossza" value="8.0"/>
+
+ 
+<!-- <param name = "waypoint_file_name" value="/mnt/storage_1tb/waypoint/zala_demo1.csv"/> -->
 
 <node pkg="obstacle_avoidance" type="b_version.py" name="obstacle_avoid"/>
 
