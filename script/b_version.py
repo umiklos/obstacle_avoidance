@@ -9,7 +9,7 @@ import visualization_msgs.msg as vismsg
 from geometry_msgs.msg import PoseStamped,TwistStamped
 import math
 #from shapely.geometry import LineString
-import time
+
 import std_msgs.msg as std 
 from jsk_rviz_plugins.msg import OverlayText
 
@@ -35,16 +35,7 @@ uj_szakasz_index_array=[]
 original_szakasz = None
 detected_object = None
 
-
-
 counter_array=None
-
-time0= None
-time1 = None
-time2= None
-time3= None
-time4= None
-#delete_marker=False
 
 
 def closest_point(data,x,y):
@@ -103,7 +94,7 @@ def callback_current_pose(pose):
     current_pose = pose
 
 def callback_detectedobjects(data):
-    global collect_intersected_waypoints,midle_index_list,path_replanned,elkerules,count,center,counter_array,time0,time1,time2,time3,time4,uj_szakasz_index_array,original_szakasz,detected_object
+    global collect_intersected_waypoints,midle_index_list,path_replanned,elkerules,count,center,counter_array,uj_szakasz_index_array,original_szakasz,detected_object
 
     waypoints_size = len(elkerules)
     centroids=np.empty((len(data.markers),2))
@@ -116,12 +107,12 @@ def callback_detectedobjects(data):
     text.left=10
     text.top=0
     text.text_size=1.0
-    #text.fg_color.r=text.fg_color.b=text.fg_color.g=0.0
     text.fg_color.a=1.0
 
     if path_replanned==True:
-        text.fg_color.r=text.fg_color.b=0.0
-        text.fg_color.g=1.0
+        text.fg_color.r=0.184313725
+        text.fg_color.g=0.490196078
+        text.fg_color.b=0.333333333
         text.text="Obstacle detected, Path replanned"
     else:
         text.fg_color.b=text.fg_color.g=0.0
@@ -145,7 +136,7 @@ def callback_detectedobjects(data):
 
     if current_pose is not None:
         if path_replanned==False:
-            tic=time.time()
+            
             #rospy.loginfo("Obstacle avoidance started,No valid points")
             closest_waypoint = closest_point(elkerules,current_pose.pose.position.x,current_pose.pose.position.y) 
             
@@ -168,14 +159,6 @@ def callback_detectedobjects(data):
                 collect_intersected_waypoints.append(min_index)
                 
 
-            toc=time.time()
-            t0=toc-tic
-
-            
-
-            if time0 is not None: 
-                time0.publish(t0)
-
             if len(collect_intersected_waypoints) > 0 :
                
                 counter_array = np.bincount(np.array(collect_intersected_waypoints),minlength=waypoints_size) 
@@ -185,7 +168,7 @@ def callback_detectedobjects(data):
                 if valid_point.size > 0:
                     detected_object=(centroids[min_j_index,0],centroids[min_j_index,1])
                     
-                    tic1=time.time()
+                    
                     szakasz_yaw = angles[valid_point[0]]
                     start_index = closest_point(elkerules,elkerules[valid_point[0]][0][0] + (kiteres_hossza  + elkerules_hossza) * np.cos(szakasz_yaw + np.pi),elkerules[valid_point[0]][0][1] + (elkerules_hossza +kiteres_hossza) * np.sin(szakasz_yaw + np.pi))
                     end_index = closest_point(elkerules,elkerules[valid_point[0]][0][0] + (visszateres_hossza) * np.cos(szakasz_yaw),elkerules[valid_point[0]][0][1] + (visszateres_hossza) * np.sin(szakasz_yaw))
@@ -233,10 +216,7 @@ def callback_detectedobjects(data):
                     elkerules_= np.column_stack((elkerules_data,yaw))
                     elkerules = np.column_stack((elkerules_,elkerules[:,3]))                    
                     path_replanned=True
-                    toc1=time.time()
-                    t1=toc1-tic1
-                    if time1 is not None: 
-                        time1.publish(t1)
+                    
             
         # else:
         #     rospy.loginfo('path replanned')
@@ -258,12 +238,7 @@ def pub():
     text_pub = rospy.Publisher("/text_overlay",OverlayText, queue_size=1)
     pub_det = rospy.Publisher("/detected_object_centroid",vismsg.MarkerArray, queue_size=1 )
 
-    time0 = rospy.Publisher("/akadaly_kereses", std.Float32,queue_size=1)
-    time1 = rospy.Publisher("/uj_trajektoria_tervezes", std.Float32,queue_size=1)
-    # time2 = rospy.Publisher("/valid_point_szamitas", std.Float32,queue_size=1)
-    # time3 = rospy.Publisher("/uj_trajektoria_tervezes", std.Float32,queue_size=1)
-    # time4 = rospy.Publisher("/extend", std.Float32,queue_size=1)
-
+    
     msg_pub_lane = Lane()
     msg_pub_lane.header.frame_id="map"
     rate=rospy.Rate(10)
