@@ -58,7 +58,6 @@ def line_length(x1, x2, y1, y2):
 
 
 
-
 waypoint_list = []
 with open(rospy.get_param("waypoint_file_name")) as f:
     header = f.readline()
@@ -170,8 +169,8 @@ def callback_detectedobjects(data):
                     
                     
                     szakasz_yaw = angles[valid_point[0]]
-                    start_index = closest_point(elkerules,elkerules[valid_point[0]][0][0] + (kiteres_hossza  + elkerules_hossza) * np.cos(szakasz_yaw + np.pi),elkerules[valid_point[0]][0][1] + (elkerules_hossza +kiteres_hossza) * np.sin(szakasz_yaw + np.pi))
-                    end_index = closest_point(elkerules,elkerules[valid_point[0]][0][0] + (visszateres_hossza) * np.cos(szakasz_yaw),elkerules[valid_point[0]][0][1] + (visszateres_hossza) * np.sin(szakasz_yaw))
+                    start_index = closest_point(elkerules,elkerules[valid_point[0]][0][0] + (kiteres_hossza  + (elkerules_hossza/2)) * np.cos(szakasz_yaw + np.pi),elkerules[valid_point[0]][0][1] + ((elkerules_hossza/2) + kiteres_hossza) * np.sin(szakasz_yaw + np.pi))
+                    end_index = closest_point(elkerules,elkerules[valid_point[0]][0][0] + ((elkerules_hossza/2)+visszateres_hossza) * np.cos(szakasz_yaw),elkerules[valid_point[0]][0][1] + ((elkerules_hossza/2) + visszateres_hossza) * np.sin(szakasz_yaw))
 
                     uj_szakasz_index_array=np.arange(start_index+1,end_index+1,1)
 
