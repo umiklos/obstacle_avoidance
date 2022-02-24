@@ -27,13 +27,14 @@ delete_threshold = rospy.get_param('/obstacle_avoidance_params/delete_threshold'
 
 current_pose = None
 collect_intersected_waypoints=[]
-midle_index_list=[]
+#midle_index_list=[]
 path_replanned=False
 count=0
 center=0
 uj_szakasz_index_array=[]
 original_szakasz = None
 detected_object = None
+end_index= None
 
 counter_array=None
 
@@ -93,7 +94,7 @@ def callback_current_pose(pose):
     current_pose = pose
 
 def callback_detectedobjects(data):
-    global collect_intersected_waypoints,midle_index_list,path_replanned,elkerules,count,center,counter_array,uj_szakasz_index_array,original_szakasz,detected_object
+    global collect_intersected_waypoints,path_replanned,elkerules,count,center,counter_array,uj_szakasz_index_array,original_szakasz,detected_object,end_index
 
     waypoints_size = len(elkerules)
     centroids=np.empty((len(data.markers),2))
@@ -121,9 +122,6 @@ def callback_detectedobjects(data):
     if text_pub is not None:
         text_pub.publish(text)
 
-
-
-
     for i in range (len(data.markers)):
         centroids[i,0]=data.markers[i].pose.position.x
         centroids[i,1]=data.markers[i].pose.position.y
@@ -134,10 +132,10 @@ def callback_detectedobjects(data):
 
 
     if current_pose is not None:
+
+        closest_waypoint = closest_point(elkerules,current_pose.pose.position.x,current_pose.pose.position.y) 
         if path_replanned==False:
-            
             #rospy.loginfo("Obstacle avoidance started,No valid points")
-            closest_waypoint = closest_point(elkerules,current_pose.pose.position.x,current_pose.pose.position.y) 
             
             la = lookahead
             if waypoints_size - closest_waypoint < la:
@@ -156,7 +154,7 @@ def callback_detectedobjects(data):
                         min_j_index=j
             if min_dist < 1.5:
                 collect_intersected_waypoints.append(min_index)
-                
+            
 
             if len(collect_intersected_waypoints) > 0 :
                
@@ -215,10 +213,13 @@ def callback_detectedobjects(data):
                     elkerules_= np.column_stack((elkerules_data,yaw))
                     elkerules = np.column_stack((elkerules_,elkerules[:,3]))                    
                     path_replanned=True
-                    
+                    collect_intersected_waypoints=[]        
+        if end_index is not None and closest_waypoint > end_index:
+            path_replanned=False
             
         # else:
         #     rospy.loginfo('path replanned')
+        # fake_comment
 
                 
     
@@ -227,7 +228,7 @@ def callback_detectedobjects(data):
 
 def pub():
     
-    global time0,time1,text_pub #,time2,time3,time4
+    global text_pub #,time2,time3,time4
     rospy.init_node('points')
     rospy.Subscriber("/converted_euclidean_objects", vismsg.MarkerArray, callback_detectedobjects)
     rospy.Subscriber("/current_pose", PoseStamped,callback_current_pose)
