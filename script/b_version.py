@@ -9,6 +9,7 @@ import visualization_msgs.msg as vismsg
 from geometry_msgs.msg import PoseStamped,TwistStamped
 import math
 #from shapely.geometry import LineString
+import sensor_msgs.msg as senmsg
 
 import std_msgs.msg as std 
 from jsk_rviz_plugins.msg import OverlayText
@@ -93,13 +94,24 @@ def callback_current_pose(pose):
     global current_pose
     current_pose = pose
 
-def callback_detectedobjects(data):
-    global collect_intersected_waypoints,path_replanned,elkerules,count,center,counter_array,uj_szakasz_index_array,original_szakasz,detected_object,end_index
 
-    waypoints_size = len(elkerules)
+def callback_detectedobjects(data):
+    global centroids
     centroids=np.empty((len(data.markers),2))
     polygon_list=[]
     
+
+
+    for i in range (len(data.markers)):
+        centroids[i,0]=data.markers[i].pose.position.x
+        centroids[i,1]=data.markers[i].pose.position.y
+        polygon_data=[]
+        for j in range(len(data.markers[i].points)):
+            polygon_data.append([data.markers[i].points[j].x,data.markers[i].points[j].y])    
+        polygon_list.append(polygon_data)
+
+def pointcloud_callback(data):
+    global collect_intersected_waypoints,path_replanned,elkerules,count,center,counter_array,uj_szakasz_index_array,original_szakasz,detected_object,end_index,centroids
 
     text=OverlayText()
     text.height=10
@@ -122,14 +134,7 @@ def callback_detectedobjects(data):
     if text_pub is not None:
         text_pub.publish(text)
 
-    for i in range (len(data.markers)):
-        centroids[i,0]=data.markers[i].pose.position.x
-        centroids[i,1]=data.markers[i].pose.position.y
-        polygon_data=[]
-        for j in range(len(data.markers[i].points)):
-            polygon_data.append([data.markers[i].points[j].x,data.markers[i].points[j].y])    
-        polygon_list.append(polygon_data)
-
+    waypoints_size = len(elkerules)
 
     if current_pose is not None:
 
@@ -230,6 +235,7 @@ def pub():
     
     global text_pub #,time2,time3,time4
     rospy.init_node('points')
+    rospy.Subscriber("/left_os1/os1_cloud_node/points", senmsg.PointCloud2, pointcloud_callback)
     rospy.Subscriber("/converted_euclidean_objects", vismsg.MarkerArray, callback_detectedobjects)
     rospy.Subscriber("/current_pose", PoseStamped,callback_current_pose)
     pub_new_data = rospy.Publisher("/global_waypoints/visualization",vismsg.MarkerArray, queue_size=1 ) 
