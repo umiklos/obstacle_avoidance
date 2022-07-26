@@ -3,8 +3,8 @@
 
 <launch>
 <node pkg="points_preprocessor" type="ray_ground_filter" name="ray_ground_filter" output="log">
-    <param name="input_point_topic" value="/right_os1/os1_cloud_node/points" />
-    <param name="base_frame" value="right_os1/os1_sensor" />
+    <param name="input_point_topic" value="/left_os1/os1_cloud_node/points" />
+    <param name="base_frame" value="left_os1/os1_sensor" />
     <param name="clipping_height" value="-0.34" />
     <param name="min_point_distance" value="5" />
     <param name="radial_divider_angle" value="1.04" />
@@ -38,7 +38,7 @@
   <arg name="use_vector_map" default="false" />
   <arg name="wayarea_gridmap_layer" default="wayarea" />
 
-  <arg name="output_frame" default="right_os1/os1_sensor" />
+  <arg name="output_frame" default="left_os1/os1_sensor" />
 
   <arg name="remove_points_upto" default="0.0" />
 

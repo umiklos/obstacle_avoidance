@@ -36,7 +36,7 @@ uj_szakasz_index_array=[]
 original_szakasz = None
 detected_object = None
 end_index= None
-
+centroids = None
 counter_array=None
 
 
@@ -111,7 +111,7 @@ def callback_detectedobjects(data):
         polygon_list.append(polygon_data)
 
 def pointcloud_callback(data):
-    global collect_intersected_waypoints,path_replanned,elkerules,count,center,counter_array,uj_szakasz_index_array,original_szakasz,detected_object,end_index,centroids
+    global collect_intersected_waypoints,path_replanned,elkerules,count,center,counter_array,uj_szakasz_index_array,original_szakasz,detected_object,end_index#centroids
 
     text=OverlayText()
     text.height=10
@@ -150,81 +150,83 @@ def pointcloud_callback(data):
             min_index=0
             min_j_index=0
 
-            for i in range(closest_waypoint,closest_waypoint+la):
-                for j in range(len(centroids)):
-                    dist = math.sqrt(math.pow(elkerules[i][0] - centroids[j,0],2) + math.pow(elkerules[i][1] - centroids[j,1],2))
-                    if dist < min_dist:
-                        min_dist=dist
-                        min_index=i
-                        min_j_index=j
-            if min_dist < 1.5:
-                collect_intersected_waypoints.append(min_index)
-            
+            if centroids is not None:
 
-            if len(collect_intersected_waypoints) > 0 :
-               
-                counter_array = np.bincount(np.array(collect_intersected_waypoints),minlength=waypoints_size) 
-                valid_point = np.asarray(np.where(counter_array > presence_threshold))
+                for i in range(closest_waypoint,closest_waypoint+la):
+                    for j in range(len(centroids)):
+                        dist = math.sqrt(math.pow(elkerules[i][0] - centroids[j,0],2) + math.pow(elkerules[i][1] - centroids[j,1],2))
+                        if dist < min_dist:
+                            min_dist=dist
+                            min_index=i
+                            min_j_index=j
+                if min_dist < 1.5:
+                    collect_intersected_waypoints.append(min_index)
                 
 
-                if valid_point.size > 0:
-                    detected_object=(centroids[min_j_index,0],centroids[min_j_index,1])
+                if len(collect_intersected_waypoints) > 0 :
+                
+                    counter_array = np.bincount(np.array(collect_intersected_waypoints),minlength=waypoints_size) 
+                    valid_point = np.asarray(np.where(counter_array > presence_threshold))
                     
-                    
-                    szakasz_yaw = angles[valid_point[0]]
-                    start_index = closest_point(elkerules,elkerules[valid_point[0]][0][0] + (kiteres_hossza  + (elkerules_hossza/2)) * np.cos(szakasz_yaw + np.pi),elkerules[valid_point[0]][0][1] + ((elkerules_hossza/2) + kiteres_hossza) * np.sin(szakasz_yaw + np.pi))
-                    end_index = closest_point(elkerules,elkerules[valid_point[0]][0][0] + ((elkerules_hossza/2)+visszateres_hossza) * np.cos(szakasz_yaw),elkerules[valid_point[0]][0][1] + ((elkerules_hossza/2) + visszateres_hossza) * np.sin(szakasz_yaw))
 
-                    uj_szakasz_index_array=np.arange(start_index+1,end_index+1,1)
-
-                    original_szakasz= np.column_stack((waypoint_list[start_index:end_index+1,0:2],angles[start_index:end_index+1]))
-
-                    elkerules_points=np.zeros((len(elkerules)-1,2))               
-                    actual_len_of_avoid = 0                 
-                    
-                    for k in range(len(elkerules)-1):
-                        x1 = elkerules[k][0]
-                        x2 = elkerules[k+1][0]
-                        y1 = elkerules[k][1]
-                        y2 = elkerules[k+1][1]
+                    if valid_point.size > 0:
+                        detected_object=(centroids[min_j_index,0],centroids[min_j_index,1])
                         
-                        if k > start_index:
-                            actual_len_of_avoid += line_length(x1, x2, y1, y2)
+                        
+                        szakasz_yaw = angles[valid_point[0]]
+                        start_index = closest_point(elkerules,elkerules[valid_point[0]][0][0] + (kiteres_hossza  + (elkerules_hossza/2)) * np.cos(szakasz_yaw + np.pi),elkerules[valid_point[0]][0][1] + ((elkerules_hossza/2) + kiteres_hossza) * np.sin(szakasz_yaw + np.pi))
+                        end_index = closest_point(elkerules,elkerules[valid_point[0]][0][0] + ((elkerules_hossza/2)+visszateres_hossza) * np.cos(szakasz_yaw),elkerules[valid_point[0]][0][1] + ((elkerules_hossza/2) + visszateres_hossza) * np.sin(szakasz_yaw))
+
+                        uj_szakasz_index_array=np.arange(start_index+1,end_index+1,1)
+
+                        original_szakasz= np.column_stack((waypoint_list[start_index:end_index+1,0:2],angles[start_index:end_index+1]))
+
+                        elkerules_points=np.zeros((len(elkerules)-1,2))               
+                        actual_len_of_avoid = 0                 
+                        
+                        for k in range(len(elkerules)-1):
+                            x1 = elkerules[k][0]
+                            x2 = elkerules[k+1][0]
+                            y1 = elkerules[k][1]
+                            y2 = elkerules[k+1][1]
                             
-                            if actual_len_of_avoid < kiteres_hossza:
-                                distance = oldaliranyu_eltolas * (actual_len_of_avoid / kiteres_hossza)
-                            elif kiteres_hossza < actual_len_of_avoid < kiteres_hossza + elkerules_hossza:
-                                distance = oldaliranyu_eltolas
-                            elif kiteres_hossza + elkerules_hossza < actual_len_of_avoid < kiteres_hossza + elkerules_hossza + visszateres_hossza:
-                                distance = oldaliranyu_eltolas * -1 * ((actual_len_of_avoid - elkerules_hossza - kiteres_hossza - visszateres_hossza)/ visszateres_hossza)
+                            if k > start_index:
+                                actual_len_of_avoid += line_length(x1, x2, y1, y2)
+                                
+                                if actual_len_of_avoid < kiteres_hossza:
+                                    distance = oldaliranyu_eltolas * (actual_len_of_avoid / kiteres_hossza)
+                                elif kiteres_hossza < actual_len_of_avoid < kiteres_hossza + elkerules_hossza:
+                                    distance = oldaliranyu_eltolas
+                                elif kiteres_hossza + elkerules_hossza < actual_len_of_avoid < kiteres_hossza + elkerules_hossza + visszateres_hossza:
+                                    distance = oldaliranyu_eltolas * -1 * ((actual_len_of_avoid - elkerules_hossza - kiteres_hossza - visszateres_hossza)/ visszateres_hossza)
+                                else:
+                                    distance = 0
+
+                                if kiteres_iranya == "balra":
+                                    elkerules_points[k,:]=((x1 + distance * np.cos(angles[k] + np.pi / 2),y1 + distance * np.sin(angles[k] + np.pi / 2)))
+                                else:
+                                    elkerules_points[k,:]=((x1 + distance * np.cos(angles[k] - np.pi / 2),y1 + distance * np.sin(angles[k] - np.pi / 2)))
                             else:
                                 distance = 0
+                                elkerules_points[k,:]=((x1,y1))
 
-                            if kiteres_iranya == "balra":
-                                elkerules_points[k,:]=((x1 + distance * np.cos(angles[k] + np.pi / 2),y1 + distance * np.sin(angles[k] + np.pi / 2)))
-                            else:
-                                elkerules_points[k,:]=((x1 + distance * np.cos(angles[k] - np.pi / 2),y1 + distance * np.sin(angles[k] - np.pi / 2)))
-                        else:
-                            distance = 0
-                            elkerules_points[k,:]=((x1,y1))
+                        elkerules_data=np.vstack((elkerules_points,elkerules[-1,0:2]))
 
-                    elkerules_data=np.vstack((elkerules_points,elkerules[-1,0:2]))
+                        yaw = np.zeros(len(elkerules_data),)
+                        for i in range(len(elkerules_data)-1):
+                            yaw[i] = np.arctan2((elkerules_data[i+1,1]-elkerules_data[i,1]),(elkerules_data[i+1,0]- elkerules_data[i,0]))
+                        yaw[-1]= elkerules[-1][2]
 
-                    yaw = np.zeros(len(elkerules_data),)
-                    for i in range(len(elkerules_data)-1):
-                        yaw[i] = np.arctan2((elkerules_data[i+1,1]-elkerules_data[i,1]),(elkerules_data[i+1,0]- elkerules_data[i,0]))
-                    yaw[-1]= elkerules[-1][2]
-
-                    elkerules_= np.column_stack((elkerules_data,yaw))
-                    elkerules = np.column_stack((elkerules_,elkerules[:,3]))                    
-                    path_replanned=True
-                    collect_intersected_waypoints=[]        
-        if end_index is not None and closest_waypoint > end_index:
-            path_replanned=False
-            
-        # else:
-        #     rospy.loginfo('path replanned')
-        # fake_comment
+                        elkerules_= np.column_stack((elkerules_data,yaw))
+                        elkerules = np.column_stack((elkerules_,elkerules[:,3]))                    
+                        path_replanned=True
+                        collect_intersected_waypoints=[]        
+            if end_index is not None and closest_waypoint > end_index:
+                path_replanned=False
+                
+            # else:
+            #     rospy.loginfo('path replanned')
+            # fake_comment
 
                 
     

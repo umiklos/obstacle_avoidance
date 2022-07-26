@@ -3,9 +3,13 @@
 <launch>
 <include file="$(find nissan_bringup)/launch/parking_challange.launch" />
 <node pkg="object_transform" type="object_transform" name="object_transform"/>
+    <param name="input_topic" value= "/detection/camera_detector/objects" /> 
+
+<!-- input topic can be /detection/lidar_detector/objects_markers   or /detection/camera_detector/objects -->
+
 <node pkg="obstacle_avoidance" type="obstacle_avoidance" name="obstacle_avoidance_params"/>
 <param name = "obstacle_avoidance_params/kiteres_hossza" value="15.0"/>
-<param name = "obstacle_avoidance_params/oldaliranyu_eltolas" value="2.6"/>
+<param name = "obstacle_avoidance_params/oldaliranyu_eltolas" value="1.6"/>
 <param name = "obstacle_avoidance_params/visszateres_hossza" value="15.0"/>
 <param name = "obstacle_avoidance_params/elkerules_hossza" value="8.0"/>
 
