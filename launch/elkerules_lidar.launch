@@ -2,7 +2,7 @@
 
 <launch>
 <include file="$(find nissan_bringup)/launch/parking_challange.launch" />
-<node pkg="object_transform" type="object_transform" name="object_transform"/>
+<node pkg="object_transform" type="object_transform" name="object_transform_lidar"/>
     
 
 <!-- input topic can be /detection/lidar_detector/objects_markers   or /detection/camera_detector/objects -->
